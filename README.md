@@ -1,6 +1,6 @@
 # PROHI Dashboard Example
 
-# [Name of the project]
+# [NeuroPredict]
 
 _You can modify this README file with all the information that your team consider relevant for a technical audience who would like to understand your project or to run it in the future._
 
@@ -12,7 +12,7 @@ Include the name, logo and images refering to your project
 
 ## Introduction
 
-[Project ] is an interactive web dashboard to.... 
+NeuroPredict is an interactive web dashboard to.... 
 
 The problem detected was...
 
