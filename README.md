@@ -57,13 +57,8 @@ NeuroPredict/
 
 ### Dependencies
 
-Tested on Python 3.12.7 with the following packages:
-  - Jupyter v1.1.1
-  - Streamlit v1.46.1
-  - Seaborn v0.13.2
-  - Plotly v6.2.0
-  - Scikit-Learn v1.7.0
-  - shap v0.48.0
+Tested on Python < 2.x
+to be added soon...
 
 ### Installation
 
