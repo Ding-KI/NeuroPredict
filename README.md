@@ -20,7 +20,8 @@ The proposed solution is valuable because...
 
 ## System description
 
-### Structure 
+### Project Architecture
+```text
 NeuroPredict/
 ├── Dashboard.py                    # main page
 ├── pages/                         # Streamlit page
@@ -41,19 +42,20 @@ NeuroPredict/
 │   │   ├── model_trainer.py      # model training
 │   │   ├── predictor.py          # predictor interface
 │   │   └── evaluator.py          # model evaluation
-│   └── visualization/            # visualization
-│       ├── plotly_charts.py      # Plotly
-│       └── shap_plots.py         # SHAP
+│   └── visualization/            
+│       ├── plotly_charts.py      
+│       └── shap_plots.py         
 ├── data/                         # data
 │   ├── raw/                      # raw data
 │   └── processed/                # process data
 ├── models/                       # saved machine learning model
 │   └── trained_models/          # trained model（pickle）
-├── notebooks/                    # Jupyter
+├── notebooks/                    
 │   ├── EDA & Modelling.ipynb    # Jupyter notebook
-├── tests/                        # test doc
-├── requirements.txt              # dependencies
-└── README.md                     # docmentation
+├── tests/                        
+├── requirements.txt              
+└── README.md                     
+```
 
 ### Dependencies
 
