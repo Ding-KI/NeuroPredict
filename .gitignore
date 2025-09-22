@@ -51,6 +51,11 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# other notebooks for testing and checkpoint
+jupyter-notebooks/example notebook-checkpoint.ipynb
+jupyter-notebooks/test.ipynb
+jupyter-notebooks/.ipynb_checkpoints/
+
 # Translations
 *.mo
 *.pot

@@ -20,6 +20,41 @@ The proposed solution is valuable because...
 
 ## System description
 
+### Structure 
+NeuroPredict/
+├── Dashboard.py                    # main page
+├── pages/                         # Streamlit page
+│   ├── 1_📊_Descriptive.py        # descriptive analysis (min. 5 questions)
+│   ├── 2_🔍_Diagnostic.py         # diagnostic analysis（min. 3 questions）
+│   ├── 3_🎯_Predictive.py         # predictive analysis
+│   ├── 4_💡_Prescriptive.py       # SHAP explaintion
+│   └── 5_ℹ️_About.py              # About page
+├── src/                           # core func module
+│   ├── data/                      # data processing
+│   │   ├── loader.py             # data loader
+│   │   └── preprocessor.py       # data preprocess
+│   ├── analysis/                  # analysis
+│   │   ├── descriptive.py        # descriptive func
+│   │   ├── diagnostic.py         # diagnostic func
+│   │   └── statistical.py        # statisc func
+│   ├── models/                    # machine learning module
+│   │   ├── model_trainer.py      # model training
+│   │   ├── predictor.py          # predictor interface
+│   │   └── evaluator.py          # model evaluation
+│   └── visualization/            # visualization
+│       ├── plotly_charts.py      # Plotly
+│       └── shap_plots.py         # SHAP
+├── data/                         # data
+│   ├── raw/                      # raw data
+│   └── processed/                # process data
+├── models/                       # saved machine learning model
+│   └── trained_models/          # trained model（pickle）
+├── notebooks/                    # Jupyter
+│   ├── EDA & Modelling.ipynb    # Jupyter notebook
+├── tests/                        # test doc
+├── requirements.txt              # dependencies
+└── README.md                     # docmentation
+
 ### Dependencies
 
 Tested on Python 3.12.7 with the following packages:
