@@ -55,6 +55,7 @@ cover/
 jupyter-notebooks/example notebook-checkpoint.ipynb
 jupyter-notebooks/test.ipynb
 jupyter-notebooks/.ipynb_checkpoints/
+jupyter-notebooks/*.html
 
 # Translations
 *.mo
