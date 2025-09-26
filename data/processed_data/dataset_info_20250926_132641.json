@@ -1,0 +1,29 @@
+{
+    "shape": [
+        1213,
+        34
+    ],
+    "features": {
+        "total": 33,
+        "groups": {
+            "user_input_features": {
+                "demographics": 4,
+                "ses_indicators": 4,
+                "sdq_scores": 5,
+                "apq_scores": 6
+            },
+            "derived_features": {
+                "ses_derived": 3,
+                "sdq_derived": 3,
+                "gender_specific": 2,
+                "parenting_derived": 2,
+                "gender_interactions": 4
+            }
+        }
+    },
+    "target_distribution": {
+        "1": 0.685078318219291,
+        "0": 0.314921681780709
+    },
+    "missing_values": {}
+}
