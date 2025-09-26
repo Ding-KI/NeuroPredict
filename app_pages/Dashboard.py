@@ -13,17 +13,36 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-# 设置页面配置
-st.set_page_config(
-    page_title="NeuroPredict Dashboard",
-    page_icon="🧠",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
 # 自定义CSS样式
 st.markdown("""
 <style>
+<style>
+
+    /* Tab 选中指示条颜色 */
+    .stTabs [data-baseweb="tab-highlight"] {
+    background-color: #1D5746 !important;}
+    
+    .stTabs [data-baseweb="tab-border"] {
+    background-color: #1D5746 !important;}
+    
+    /* 将选中标签的红色文字改为绿色 */
+    .stTabs [aria-selected="true"] {
+    color: #1D5746 !important;}
+    
+    /* 将所有标签文字改为绿色 */
+    .stTabs [data-baseweb="tab"] {
+    color: #1D5746 !important;}
+
+    /* 确保选中状态也是绿色 */
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+    color: #1D5746 !important;}
+
+    /* 悬浮时变成红色 */
+    .stTabs [data-baseweb="tab"]:hover {
+    color: #e74c3c !important;}
+    
+
+    
     .main-header {
         font-size: 3rem;
         color: #1f77b4;
@@ -42,24 +61,27 @@ st.markdown("""
     }
 
     .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #1D5746;  /* 修改这里的背景色 */
         padding: 1.5rem;
         border-radius: 15px;
-        color: white;
+        color: white;  /* 文字改为白色以便于阅读 */
         text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 15px rgba(29, 87, 70, 0.4);  /* 调整阴影颜色 */
         margin: 0.5rem;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
 
     .metric-title {
         font-size: 0.9rem;
-        opacity: 0.8;
+        opacity: 0.9;  /* 稍微调整透明度 */
         margin-bottom: 0.5rem;
+        color: white;  /* 确保标题也是白色 */
     }
 
     .metric-value {
         font-size: 2rem;
         font-weight: bold;
+        color: white;  /* 确保数值也是白色 */
     }
 
     .info-box {
@@ -87,7 +109,7 @@ st.markdown("""
     }
 
     .navigation-card {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        background: #1D5746;
         padding: 2rem;
         border-radius: 20px;
         text-align: center;
@@ -95,6 +117,7 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         cursor: pointer;
         transition: all 0.3s ease;
+        color: white;
     }
 
     .navigation-card:hover {
@@ -112,8 +135,25 @@ st.markdown("""
         border-radius: 10px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
+
+    .stApp > header {
+        background-color: transparent;
+    }
+
+    .stApp {
+        margin-top: -80px;
+    }
+
+    hr {
+        display: none !important;
+    }
+
+    .css-1dp5vir {
+        background-image: none;
+    }
 </style>
 """, unsafe_allow_html=True)
+
 
 # 数据加载函数
 @st.cache_data
@@ -127,11 +167,11 @@ def load_dashboard_data():
 
         overall_df = df_cat.merge(df_Q, on="participant_id", how="inner").merge(df_sol, on="participant_id",
                                                                                 how="inner")
-        
+
         # 创建性别和ADHD状态列
         if 'Sex_F' in overall_df.columns:
             overall_df['Gender'] = overall_df['Sex_F'].map({0: 'Male', 1: 'Female'})
-        
+
         if 'ADHD_Outcome' in overall_df.columns:
             overall_df['ADHD_Status'] = overall_df['ADHD_Outcome'].map({0: 'Non-ADHD', 1: 'ADHD'})
 
@@ -190,6 +230,7 @@ def load_dashboard_data():
 
     return overall_df
 
+
 def create_metric_card(title, value, delta=None, delta_color="normal"):
     """创建自定义指标卡片"""
     delta_html = ""
@@ -205,18 +246,20 @@ def create_metric_card(title, value, delta=None, delta_color="normal"):
     </div>
     """
 
+
 def analyze_missing_values(data):
     """分析缺失值"""
     missing_data = data.isnull().sum()
     missing_percentage = (missing_data / len(data) * 100).round(2)
-    
+
     missing_df = pd.DataFrame({
         'Feature': missing_data.index,
         'Missing_Count': missing_data.values,
         'Missing_Percentage': missing_percentage.values
     }).sort_values('Missing_Percentage', ascending=False)
-    
+
     return missing_df[missing_df['Missing_Count'] > 0]
+
 
 def detect_outliers_iqr(data, column):
     """使用IQR方法检测异常值"""
@@ -225,14 +268,16 @@ def detect_outliers_iqr(data, column):
     IQR = Q3 - Q1
     lower_bound = Q1 - 1.5 * IQR
     upper_bound = Q3 + 1.5 * IQR
-    
+
     outliers = data[(data[column] < lower_bound) | (data[column] > upper_bound)]
     return outliers, lower_bound, upper_bound
+
 
 def calculate_correlation_matrix(data, variables):
     """计算相关性矩阵"""
     numeric_data = data[variables].select_dtypes(include=[np.number])
     return numeric_data.corr()
+
 
 def perform_chi_square_test(data, var1, var2):
     """执行卡方检验"""
@@ -243,41 +288,48 @@ def perform_chi_square_test(data, var1, var2):
     except:
         return None, None, None
 
-# 主应用程序
-def main():
-    # 主标题
-    st.markdown('<h1 class="main-header">🧠 NeuroPredict Dashboard</h1>', unsafe_allow_html=True)
 
-    # 加载数据
+def main():
+    # 加载数据并在侧边栏显示统计信息
     data = load_dashboard_data()
 
-    # 侧边栏
-    st.sidebar.title("🧠 NeuroPredict")
-    st.sidebar.markdown("---")
+    with st.sidebar:
 
-    # 数据集信息
-    st.sidebar.markdown("### 📊 Dataset Info")
-    st.sidebar.info(f"""
-    **Total Participants**: {len(data):,}  
-    **Features**: {len(data.columns):,}  
-    **Study Sites**: {data['Basic_Demos_Study_Site'].nunique() if 'Basic_Demos_Study_Site' in data.columns else 0}  
-    **Years**: {data['Basic_Demos_Enroll_Year'].nunique() if 'Basic_Demos_Enroll_Year' in data.columns else 0}
-    """)
+        st.markdown("""
+        <h3 style="
+            font-size: 1.8rem; 
+            color: #FFFFFF; 
+            font-weight: 600; 
+            margin-bottom: 0rem; 
+            margin-top: 0.5rem;
+        ">Quick Stats</h3>
+        """, unsafe_allow_html=True)
+        adhd_rate = (data['ADHD_Outcome'].sum() / len(data) * 100) if 'ADHD_Outcome' in data.columns else 0
+        female_rate = (data['Sex_F'].sum() / len(data) * 100) if 'Sex_F' in data.columns else 0
 
-    # 快速统计
-    st.sidebar.markdown("### 🎯 Quick Stats")
-    adhd_rate = (data['ADHD_Outcome'].sum() / len(data) * 100) if 'ADHD_Outcome' in data.columns else 0
-    female_rate = (data['Sex_F'].sum() / len(data) * 100) if 'Sex_F' in data.columns else 0
+        # 左对齐并增加左边距
+        with st.container():
+            st.markdown(f"""
+            <div style="background-color: #1D5746; padding: 0rem 0rem 0rem 0rem; border-radius: 10px; margin: 0rem 0; text-align: left; box-shadow: 0 2px 10px rgba(29, 87, 70, 0.3);">
+                <p style="color: white; margin: 0; font-size: 1.2rem; opacity: 0.9;">ADHD Rate</p>
+                <h2 style="color: white; margin: 0; font-size: 2rem;">{adhd_rate:.1f}%</h2>
 
-    st.sidebar.metric("ADHD Rate", f"{adhd_rate:.1f}%")
-    st.sidebar.metric("Female Participants", f"{female_rate:.1f}%")
+            </div>
+            """, unsafe_allow_html=True)
 
+        with st.container():
+            st.markdown(f"""
+            <div style="background-color: #1D5746; padding: 0rem 0rem 0rem 0rem; border-radius: 10px; margin: 0rem 0; text-align: left; box-shadow: 0 2px 10px rgba(29, 87, 70, 0.3);">
+                <p style="color: white; margin: 0; font-size: 1.2rem; opacity: 0.9;">Female Participants</p>
+                <h2 style="color: white; margin: 0; font-size: 2rem;">{female_rate:.1f}%</h2>
+            </div>
+            """, unsafe_allow_html=True)
     # 主要内容区域
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 EDA Overview", "📈 Analytics", "🔍 Data Quality", "🧭 Navigation"])
+    tab1, tab2, tab3, tab4 = st.tabs(["EDA Overview", "Analytics", "Data Quality", "Navigation"])
 
     with tab1:
         # EDA概览标签
-        st.markdown('<h2 class="section-header">📊 Exploratory Data Analysis Overview</h2>', unsafe_allow_html=True)
+        st.subheader("Exploratory Data Analysis Overview")
 
         # 关键指标
         col1, col2, col3, col4 = st.columns(4)
@@ -308,7 +360,7 @@ def main():
                 fig_year = px.bar(
                     x=year_dist.index.tolist(),
                     y=year_dist.values.tolist(),
-                    title="📅 Participants by Enrollment Year",
+                    title="Participants by Enrollment Year",
                     labels={'x': 'Year', 'y': 'Count'},
                     color=year_dist.values.tolist(),
                     color_continuous_scale='viridis'
@@ -323,32 +375,27 @@ def main():
                 fig_site = px.pie(
                     values=site_dist.values.tolist(),
                     names=[f"Site {i}" for i in site_dist.index],
-                    title="🏥 Distribution by Study Site"
+                    title="Distribution by Study Site"
                 )
                 st.plotly_chart(fig_site, use_container_width=True)
 
-        # 目标变量分布
-        st.markdown('<h3 class="section-header">🎯 Target Variables Distribution</h3>', unsafe_allow_html=True)
-
-        # 添加ADHD诊断统计摘要
         if 'ADHD_Outcome' in data.columns:
-            st.markdown('<h4 class="section-header">📊 Summary Statistics for ADHD_Outcome</h4>', unsafe_allow_html=True)
-            
+            st.subheader("Target Variables Distribution")
             adhd_counts = data['ADHD_Outcome'].value_counts()
             total_samples = len(data)
             non_adhd_count = adhd_counts.get(0, 0)
             adhd_count = adhd_counts.get(1, 0)
             non_adhd_pct = (non_adhd_count / total_samples) * 100
             adhd_pct = (adhd_count / total_samples) * 100
-            
+
             col1, col2, col3 = st.columns(3)
-            
+
             with col1:
                 st.markdown(f"**Total samples: {total_samples}**")
-            
+
             with col2:
                 st.markdown(f"**Non-ADHD:** n={non_adhd_count} ({non_adhd_pct:.1f}%)")
-            
+
             with col3:
                 st.markdown(f"**ADHD:** n={adhd_count} ({adhd_pct:.1f}%)")
 
@@ -360,13 +407,13 @@ def main():
                 fig_adhd = px.bar(
                     x=['Non-ADHD', 'ADHD'],
                     y=adhd_counts.values.tolist(),
-                    title="🧠 Distribution of Type of Diagnosis",
+                    title="Distribution of Type of Diagnosis",
                     color=['Non-ADHD', 'ADHD'],
                     color_discrete_map={'Non-ADHD': '#95a5a6', 'ADHD': '#f1c40f'},
                     labels={'x': 'Diagnosis Type', 'y': 'Count'}
                 )
                 st.plotly_chart(fig_adhd, use_container_width=True)
-                
+
                 # 添加ADHD诊断的环形图
                 fig_adhd_donut = px.pie(
                     values=adhd_counts.values.tolist(),
@@ -383,13 +430,13 @@ def main():
                 fig_sex = px.bar(
                     x=['Male', 'Female'],
                     y=[sex_counts.get(0, 0), sex_counts.get(1, 0)],
-                    title="👥 Distribution of Sex of participant",
+                    title="Distribution of Sex of participant",
                     color=['Male', 'Female'],
                     color_discrete_map={'Male': '#74b9ff', 'Female': '#fd79a8'},
                     labels={'x': 'Gender', 'y': 'Count'}
                 )
                 st.plotly_chart(fig_sex, use_container_width=True)
-                
+
                 # 添加性别的环形图
                 fig_sex_donut = px.pie(
                     values=[sex_counts.get(0, 0), sex_counts.get(1, 0)],
@@ -401,31 +448,28 @@ def main():
                 st.plotly_chart(fig_sex_donut, use_container_width=True)
 
         # 变量类型分布
-        st.markdown('<h3 class="section-header">📊 Variable Types Distribution</h3>', unsafe_allow_html=True)
-        
+        st.subheader("Variable Types Distribution")
+
         # 数值变量和分类变量统计
         numeric_vars = data.select_dtypes(include=[np.number]).columns.tolist()
         categorical_vars = data.select_dtypes(include=['object', 'category']).columns.tolist()
-        
+
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
             st.markdown(create_metric_card("Numeric Variables", f"{len(numeric_vars)}"), unsafe_allow_html=True)
-        
+
         with col2:
             st.markdown(create_metric_card("Categorical Variables", f"{len(categorical_vars)}"), unsafe_allow_html=True)
-        
+
         with col3:
             st.markdown(create_metric_card("Total Variables", f"{len(data.columns)}"), unsafe_allow_html=True)
 
     with tab2:
-        # 分析标签
-        st.markdown('<h2 class="section-header">📈 Advanced Analytics</h2>', unsafe_allow_html=True)
-
         # 相关性分析
         numeric_cols = data.select_dtypes(include=[np.number]).columns.tolist()
         if len(numeric_cols) > 1:
-            st.markdown('<h3 class="section-header">🔗 Feature Correlations</h3>', unsafe_allow_html=True)
+            st.subheader("Feature Correlations")
 
             # 选择要分析的特征
             selected_features = st.multiselect(
@@ -446,50 +490,48 @@ def main():
                 )
                 fig_corr.update_layout(height=500)
                 st.plotly_chart(fig_corr, use_container_width=True)
-            
+
             # 添加完整的相关性热力图
-            st.markdown('<h4 class="section-header">📊 Correlation Heatmap - All Variables</h4>', unsafe_allow_html=True)
-            
+            st.subheader("Correlation Heatmap - All Variables")
             # 计算所有数值变量的相关性矩阵
             all_numeric_cols = data.select_dtypes(include=[np.number]).columns.tolist()
             if len(all_numeric_cols) > 1:
                 full_corr_matrix = data[all_numeric_cols].corr()
-                
+
                 # 创建下三角矩阵（只显示下三角部分）
                 mask = np.triu(np.ones_like(full_corr_matrix, dtype=bool))
                 corr_matrix_masked = full_corr_matrix.mask(mask)
-                
+
                 fig_full_corr = px.imshow(
                     corr_matrix_masked,
                     text_auto=True,
                     aspect="auto",
-                    title="Correlation Heatmap - All Variables",
                     color_continuous_scale="RdBu_r"
                 )
                 fig_full_corr.update_layout(height=800)
                 st.plotly_chart(fig_full_corr, use_container_width=True)
-                
+
                 # 添加性别相关性分析
                 if 'Sex_F' in data.columns:
-                    st.markdown('<h4 class="section-header">👥 Gender Correlation Analysis</h4>', unsafe_allow_html=True)
-                    
+                    st.subheader("Gender Correlation Analysis")
+
                     # 计算与性别的相关性
                     sex_corr = full_corr_matrix['Sex_F'].sort_values(ascending=False)
-                    
+
                     # 显示性别相关性
                     col1, col2 = st.columns(2)
-                    
+
                     with col1:
                         st.markdown("**Top Positive Correlations with Gender:**")
                         st.dataframe(sex_corr.head(10), use_container_width=True)
-                    
+
                     with col2:
                         st.markdown("**Top Negative Correlations with Gender:**")
                         st.dataframe(sex_corr.tail(10), use_container_width=True)
 
         # 年龄分布分析
         if 'MRI_Track_Age_at_Scan' in data.columns:
-            st.markdown('<h3 class="section-header">👶 Age Distribution Analysis</h3>', unsafe_allow_html=True)
+            st.subheader("Age Distribution Analysis")
 
             col1, col2 = st.columns(2)
 
@@ -514,7 +556,7 @@ def main():
                     )
                     fig_age_box.update_layout(
                         xaxis=dict(
-                            tickvals=[0, 1], 
+                            tickvals=[0, 1],
                             ticktext=['No ADHD', 'ADHD']
                         )
                     )
@@ -523,7 +565,7 @@ def main():
         # SDQ分数分析
         sdq_columns = [col for col in data.columns if col.startswith('SDQ_')]
         if sdq_columns:
-            st.markdown('<h3 class="section-header">📋 SDQ Scores Analysis</h3>', unsafe_allow_html=True)
+            st.subheader("SDQ Scores Analysis")
 
             sdq_data = data[sdq_columns].mean()
 
@@ -537,14 +579,11 @@ def main():
             st.plotly_chart(fig_sdq, use_container_width=True)
 
     with tab3:
-        # 数据质量标签
-        st.markdown('<h2 class="section-header">🔍 Data Quality Assessment</h2>', unsafe_allow_html=True)
-
         # 缺失值分析
         missing_data = analyze_missing_values(data)
 
         if len(missing_data) > 0:
-            st.markdown('<h3 class="section-header">❌ Missing Values Analysis</h3>', unsafe_allow_html=True)
+            st.subheader("Missing Values Analysis")
 
             col1, col2 = st.columns(2)
 
@@ -566,7 +605,7 @@ def main():
             st.success("🎉 No missing values detected in the dataset!")
 
         # 数据类型摘要
-        st.markdown('<h3 class="section-header">📊 Data Types Summary</h3>', unsafe_allow_html=True)
+        st.subheader("Data Types Summary")
 
         dtype_summary = pd.DataFrame({
             'Data Type': [str(dtype) for dtype in data.dtypes.value_counts().index],
@@ -582,7 +621,7 @@ def main():
         st.plotly_chart(fig_dtype, use_container_width=True)
 
         # 唯一值统计
-        st.markdown('<h3 class="section-header">🔢 Unique Values Statistics</h3>', unsafe_allow_html=True)
+        st.subheader("Unique Values Statistics")
 
         unique_stats = pd.DataFrame({
             'Feature': data.columns,
@@ -593,24 +632,24 @@ def main():
         st.dataframe(unique_stats.head(15), use_container_width=True)
 
         # 异常值检测
-        st.markdown('<h3 class="section-header">🚨 Outlier Detection</h3>', unsafe_allow_html=True)
-        
+        st.subheader("Outlier Detection")
+
         numeric_vars = data.select_dtypes(include=[np.number]).columns.tolist()
         if numeric_vars:
             selected_var = st.selectbox("Select variable for outlier detection:", numeric_vars)
-            
+
             if selected_var:
                 outliers, lower_bound, upper_bound = detect_outliers_iqr(data, selected_var)
-                
+
                 col1, col2 = st.columns(2)
-                
+
                 with col1:
                     st.markdown(f"**Outlier Statistics for {selected_var}:**")
                     st.markdown(f"- Lower Bound: {lower_bound:.2f}")
                     st.markdown(f"- Upper Bound: {upper_bound:.2f}")
                     st.markdown(f"- Number of Outliers: {len(outliers)}")
-                    st.markdown(f"- Outlier Percentage: {len(outliers)/len(data)*100:.2f}%")
-                
+                    st.markdown(f"- Outlier Percentage: {len(outliers) / len(data) * 100:.2f}%")
+
                 with col2:
                     # 箱线图显示异常值
                     fig_box = px.box(
@@ -622,24 +661,13 @@ def main():
                     st.plotly_chart(fig_box, use_container_width=True)
 
     with tab4:
-        # 导航标签
-        st.markdown('<h2 class="section-header">🧭 Navigation Hub</h2>', unsafe_allow_html=True)
-
-        st.markdown("""
-        <div class="info-box">
-            <h3>🚀 Welcome to NeuroPredict Analytics Platform</h3>
-            <p>Navigate through different analysis modules to explore the ADHD prediction dataset comprehensively.</p>
-        </div>
-        """, unsafe_allow_html=True)
-
         # 导航卡片
         col1, col2 = st.columns(2)
 
         with col1:
             st.markdown("""
             <div class="navigation-card">
-                <h3>📊 Descriptive Analysis</h3>
-                <p>Explore basic statistics, distributions, and data characteristics</p>
+                <h3>Descriptive Analysis</h3>
                 <ul style="text-align: left; margin-top: 1rem;">
                     <li>Dataset Overview</li>
                     <li>Missing Values Analysis</li>
@@ -651,8 +679,7 @@ def main():
 
             st.markdown("""
             <div class="navigation-card">
-                <h3>🔬 Diagnostic Analysis</h3>
-                <p>Deep dive into data quality and diagnostic insights</p>
+                <h3>Diagnostic Analysis</h3>
                 <ul style="text-align: left; margin-top: 1rem;">
                     <li>Data Quality Assessment</li>
                     <li>Outlier Detection</li>
@@ -665,8 +692,7 @@ def main():
         with col2:
             st.markdown("""
             <div class="navigation-card">
-                <h3>🎯 Predictive Analysis</h3>
-                <p>Build and evaluate machine learning models</p>
+                <h3>Predictive Analysis</h3>
                 <ul style="text-align: left; margin-top: 1rem;">
                     <li>Feature Engineering</li>
                     <li>Model Training</li>
@@ -678,8 +704,7 @@ def main():
 
             st.markdown("""
             <div class="navigation-card">
-                <h3>💊 Prescriptive Analysis</h3>
-                <p>Generate actionable insights and recommendations</p>
+                <h3>Prescriptive Analysis</h3>
                 <ul style="text-align: left; margin-top: 1rem;">
                     <li>Treatment Recommendations</li>
                     <li>Risk Stratification</li>
@@ -689,51 +714,17 @@ def main():
             </div>
             """, unsafe_allow_html=True)
 
-        # 技术规格
-        st.markdown('<h3 class="section-header">⚙️ Technical Specifications</h3>', unsafe_allow_html=True)
-
-        tech_col1, tech_col2, tech_col3 = st.columns(3)
-
-        with tech_col1:
-            st.markdown("""
-            **📊 Data Processing**
-            - Pandas & NumPy
-            - Data Cleaning
-            - Feature Engineering
-            - Statistical Analysis
-            """)
-
-        with tech_col2:
-            st.markdown("""
-            **🤖 Machine Learning**
-            - Scikit-learn
-            - XGBoost
-            - CatBoost
-            - Model Evaluation
-            """)
-
-        with tech_col3:
-            st.markdown("""
-            **📈 Visualization**
-            - Plotly Interactive Charts
-            - Seaborn Statistical Plots
-            - Streamlit Components
-            - Real-time Updates
-            """)
-
     # 页脚
     st.markdown("---")
     st.markdown(
         """
         <div style='text-align: center; color: #666; font-size: 0.9rem; padding: 2rem;'>
-            <h4>🧠 NeuroPredict Dashboard</h4>
-            <p>Advanced Analytics Platform for ADHD Prediction Research</p>
-            <p>Built with ❤️ using Streamlit | Last Updated: {}</p>
+            <h4>NeuroPredict Dashboard</h4>
+            <p>Built by Group 4 | Last Updated: {}</p>
         </div>
         """.format(datetime.now().strftime("%Y-%m-%d %H:%M")),
         unsafe_allow_html=True
     )
-
 
 if __name__ == "__main__":
     main()
