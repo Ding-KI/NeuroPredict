@@ -124,63 +124,124 @@ def load_model(model_path):
         st.error(f"An error occurred while loading the model: {e}")
         return None
 
-model = load_model('/Users/kaviya/Repositories/ProHi/NeuroPredict copy/model/best_model_Decision_Tree_Depth=3.joblib')
+# Define the questions and their corresponding options and values
+gender_question = {"16. Gender": "Please select the gender."}
+gender_options = {'Male': 0, 'Female': 1}
 
-st.title("Predicting outcome of ADHD diagnosis")
-st.markdown("""This page consists of the Alabama Parenting Questionnaire (APQ) and the Strengths and Difficulties Questionnaire (SDQ) to predict the likelihood of ADHD diagnosis in children.
-            Please answer all the questions below to the best of your ability.""")
-with st.form("questionnaire_form"):
-    st.header("Alabama Parenting Questionnaire (APQ)")
-    apq_questions = [
-    "I praise my child when they behave well.",
-    "I find it hard to discipline my child consistently.",
-    "I supervise my child’s activities.",
-    "I lose my temper when disciplining my child.",]
-    apq_responses = []
-    for q in apq_questions:
-        response = st.slider(q, min_value=1, max_value=5, value=3)
-        apq_responses.append(response)
-    
-    # Question 2 
-    st.header("Strengths and Difficulties Questionnaire (SDQ)")
-    sdq_questions = [
-    "Considerate of other people’s feelings.",
-    "Restless, overactive, cannot stay still for long.",
-    "Often complains of headaches, stomach aches or sickness.",
-    "Shares readily with other children.",]
-    
-    sdq_responses = []
-    for q in sdq_questions:
-        response = st.slider(q, min_value=0, max_value=2, value=1)
-        sdq_responses.append(response)
+apq_questions = {
+    "1. You slap your child when he/she has done something wrong.": "(Parenting Corporal Punishment Score)",
+    "2. The punishment you give your child depends on your mood.": "(Parenting Inconsistent Discipline Score)",
+    "3. You regularly attend PTA meetings, parent/teacher conferences, or other meetings at your child's school.": "(Parenting Involvement Score)",
+    "4. You take away privileges or money from your child as punishment.": "(Parenting Other Discipline Practices Score)",
+    "5. Your child comes home from school more than an hour past the time you expect him/her to be home.": "(Parenting Poor Monitoring/Supervision Score)",
+    "6. You compliment your child when he/she has done something well.": "(Parenting Positive Parenting Score)",
+}
+apq_options = {'Never': 0, 'Almost never': 1, 'Sometimes': 2, 'Often': 3, 'Always': 4}
 
-    submitted = st.form_submit_button("Predict Outcome")
-features = np.array(apq_responses + sdq_responses).reshape(1, -1)
-st.divider()
+sdq_questions = {
+    "7. Often has temper tantrums or hot tempers.": "(Conduct Problems Scale)",
+    "8. Generally well behaved, usually does what adults request.": "(Total Difficulties Scale)",
+    "9. Many worries, or often seems worried.": "(Emotional Problems Scale)",
+    "10. Often fights with other children or bullies them.": "(Externalizing Scale)",
+    "11. Restless, overactive, cannot stay still for long.": "(Hyperactivity Scale)",
+    "12. Often unhappy, depressed or tearful.": "(Internalizing Scale)",
+    "13. Picked on or bullied by other children.": "(Peer Problems Scale)",
+    "14. Often offers to help others (parents, teachers, children).": "(Prosocial Scale)",
+    "15. Do these difficulties upset or distress your child?": "(Generating Impact Scale)",
+}
+sdq_options = {'Not True': 0, 'Somewhat True': 1, 'Certainly True': 2}
 
-if submitted:
-        prediction = model.predict(features)
-        proba = None
-        if hasattr(model, "predict_proba"):
-            proba = model.predict_proba(features)[0][1]
+gender_question = {"16. Gender": "Please select the gender."}
+gender_options = {'Male': 0, 'Female': 1}
+
+def main():
+    """
+    This function defines the Streamlit page for the ADHD prediction dashboard.
+    """
+    st.title("ADHD Outcome Prediction Questionnaire")
+    st.markdown("""
+    Please answer the following questions based on your observations. Your responses will be used to predict an outcome using a machine learning model.
+    **Disclaimer:** This is a tool for preliminary assessment and is **not** a substitute for a professional medical diagnosis.
+    """)
+
+    # Load the model
+    model = load_model('/Users/kaviya/Repositories/ProHi/NeuroPredict copy/model/best_model_Decision_Tree_Depth=3.joblib')
+
+    # Use a form to collect all inputs and submit them at once
+    with st.form("prediction_form"):
+            st.header("Parenting Questionnaire (APQ)")
+            apq_responses = {}
+            for key, question in apq_questions.items():
+                full_label = f"**{key}**\n\n{question}"
+                response = st.radio(full_label, options=list(apq_options.keys()), horizontal=True, key=key)
+                apq_responses[key] = response
+            st.markdown("---")
+
+            st.header("Strengths and Difficulties Questionnaire (SDQ)")
+            sdq_responses = {}
+            for key, question in sdq_questions.items():
+                full_label = f"**{key}**\n\n{question}"
+                response = st.radio(full_label, options=list(sdq_options.keys()), horizontal=True, key=key)
+                sdq_responses[key] = response
+
+            st.header("Gender")
+            gender_response = st.radio(
+                   "**1. Please select the gender:**",
+                   options=list(gender_options.keys()),
+                   horizontal=True,
+                   key="gender") 
+            submitted = st.form_submit_button("Submit and Predict Outcome")
         
-        st.subheader("Prediction Result:")
-        
-        if prediction[0] == 1:
-            st.error("High likelihood of ADHD symptoms detected.")
+    if submitted:
+        if model is None:
+             st.warning("Cannot proceed with prediction because the model is not loaded.")
         else:
-            st.success("Low likelihood of ADHD symptoms detected.")
+            input_data = []
             
-        if proba is not None:
-            st.write(f"Model confidence: {proba:.2f}")
+            # 1. APQ responses
+            for key in apq_questions.keys():
+                input_data.append(apq_options[apq_responses[key]])
+
+            # 2. SDQ responses
+            for key in sdq_questions.keys():
+                input_data.append(sdq_options[sdq_responses[key]])
+
+            # 3. Gender response
+            input_data.append(gender_options[gender_response])
+            
+            # Convert to a NumPy array and reshape for the model
+            final_features = np.array(input_data).reshape(1, -1)
+            
+            # Make prediction
+            try:
+                prediction = model.predict(final_features)
+                prediction_proba = model.predict_proba(final_features)
+
+                st.subheader("Prediction Result")
+                
+                # Assuming the model outputs 1 for 'High Likelihood' and 0 for 'Low Likelihood'
+                if prediction[0] == 1:
+                    st.error("Prediction: High Likelihood of ADHD")
+                else:
+                    st.success("Prediction: Low Likelihood of ADHD")
+                
+                st.write("Confidence Score:")
+                st.info(f"The model is {prediction_proba[0][prediction[0]]*100:.2f}% confident in this prediction.")
+            except Exception as e:
+                st.error(f"An error occurred during prediction: {e}")
     
-st.markdown("---")
-st.markdown(
-        """
-        <div style='text-align: center; color: #666; font-size: 0.9rem; padding: 2rem;'>
-            <h4>NeuroPredict Dashboard</h4>
-            <p>Built by Group 4 | Last Updated: {}</p>
-        </div>
-        """.format(datetime.now().strftime("%Y-%m-%d %H:%M")),
-        unsafe_allow_html=True
-    )
+    st.markdown("---")
+    st.markdown(
+       """
+       <div style='text-align: center; color: #666; font-size: 0.9rem; padding: 2rem;'>
+           <h4>NeuroPredict Dashboard</h4>
+           <p>Built by Group 4 | Last Updated: {}</p>
+       </div>
+       """.format(datetime.now().strftime("%Y-%m-%d %H:%M")),
+       unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()
+
+
+    
