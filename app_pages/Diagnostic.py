@@ -260,17 +260,16 @@ def main():
     data = load_data()
 
     # 创建标签页
-    tab1, tab2, tab3 = st.tabs([
+    tab1, tab2, = st.tabs([
         "Key Factors Analysis",
-        "APQ Correlations",
         "SDQ-APQ Relationships"
     ])
 
     with tab1:
         # Question 1: Key Factors Associated with ADHD
         st.markdown("### Key Factors Associated with ADHD Diagnosis")
-        st.markdown(
-            "* What are the key behavioral, parenting, and demographic factors associated with ADHD diagnosis, and how strong are these associations?")
+        st.markdown(" * What are the key behavioral, parenting, and demographic factors associated with ADHD diagnosis?")
+        st.markdown(" * How strong are these associations?")
 
         if 'ADHD_Outcome' in data.columns:
             # 定义分析变量
@@ -294,39 +293,20 @@ def main():
                     # 显示前10个最重要的特征
                     top_features = importance_results.head(10)
 
-                    col1, col2 = st.columns(2)
-
-                    with col1:
-                        st.markdown("##### Top 10 Most Important Features")
-                        st.dataframe(top_features, use_container_width=True, hide_index=True)
-
-                    with col2:
+                    st.markdown("##### Top 10 Most Important Features")
                         # F-score可视化
-                        fig_fscore = px.bar(
+                    fig_fscore = px.bar(
                             top_features,
                             x='F_Score',
                             y='Feature',
                             orientation='h',
                             title='Feature Importance (F-Score)',
                             color='F_Score',
-                            color_continuous_scale='viridis'
+                            color_continuous_scale='viridis',
+                            labels={'F_Score': 'Importance', 'Feature': 'Feature Name'}
                         )
-                        fig_fscore.update_layout(height=400)
-                        st.plotly_chart(fig_fscore, use_container_width=True)
-
-                    # 互信息可视化
-                    st.markdown("#### Mutual Information Analysis")
-                    fig_mi = px.bar(
-                        top_features,
-                        x='Mutual_Info',
-                        y='Feature',
-                        orientation='h',
-                        title='Feature Importance (Mutual Information)',
-                        color='Mutual_Info',
-                        color_continuous_scale='plasma'
-                    )
-                    fig_mi.update_layout(height=400)
-                    st.plotly_chart(fig_mi, use_container_width=True)
+                    fig_fscore.update_layout(height=400, yaxis={'categoryorder':'total ascending'})
+                    st.plotly_chart(fig_fscore, use_container_width=True)
 
                     # 按类别分析
                     st.markdown("#### Analysis by Category")
@@ -334,8 +314,6 @@ def main():
                     categories = {
                         'Behavioral (SDQ)': [var for var in behavioral_vars if var in data.columns],
                         'Parenting (APQ)': [var for var in parenting_vars if var in data.columns],
-                        'Demographics': [var for var in demographic_vars if var in data.columns],
-                        'Parent Education/Occupation': [var for var in parent_edu_occ_vars if var in data.columns]
                     }
 
                     for category, vars_in_category in categories.items():
@@ -343,9 +321,6 @@ def main():
                             category_results = importance_results[importance_results['Feature'].isin(vars_in_category)]
                             if not category_results.empty:
                                 st.markdown(f"##### {category}")
-
-                                # 使用单列布局，表格在上，图表在下
-                                st.dataframe(category_results, use_container_width=True, hide_index=True)
 
                                 if len(category_results) > 1:
                                     fig_category = px.bar(
@@ -355,111 +330,19 @@ def main():
                                         orientation='h',
                                         title=f'{category} - Feature Importance',
                                         color='F_Score',
-                                        color_continuous_scale='viridis'
+                                        color_continuous_scale='viridis',
+                                        labels={'F_Score': 'Importance', 'Feature': 'Feature Name'}
                                     )
                                     # 根据特征数量调整图表高度
                                     chart_height = max(300, len(category_results) * 50)
                                     fig_category.update_layout(height=chart_height)
                                     st.plotly_chart(fig_category, use_container_width=True)
 
-
-
     with tab2:
-        # Question 2: APQ Correlations
-        st.markdown("### APQ Parenting Practices Correlations")
-        st.markdown(
-            "* How do different parenting practices (measured by APQ) correlate with each other, and do these correlations differ between ADHD and non-ADHD groups?")
-
-        # APQ变量
-        apq_vars = [col for col in data.columns if col.startswith('APQ_P_APQ_P_')]
-
-        if apq_vars and 'ADHD_Status' in data.columns:
-
-
-            # 整体相关性矩阵
-            st.markdown("#### Overall APQ Correlation Matrix")
-            corr_matrix = calculate_correlation_matrix(data, apq_vars)
-
-            fig_corr_overall = px.imshow(
-                corr_matrix,
-                text_auto=True,
-                aspect="auto",
-                title="APQ Variables Correlation Matrix (Overall)",
-                color_continuous_scale="RdBu_r"
-            )
-            fig_corr_overall.update_layout(height=500)
-            st.plotly_chart(fig_corr_overall, use_container_width=True)
-
-            # 按ADHD状态分组的相关性分析
-            st.markdown("#### APQ Correlations by ADHD Status")
-
-            adhd_data = data[data['ADHD_Status'] == 'ADHD'][apq_vars].dropna()
-            non_adhd_data = data[data['ADHD_Status'] == 'Non-ADHD'][apq_vars].dropna()
-
-            if len(adhd_data) > 0 and len(non_adhd_data) > 0:
-                corr_adhd = calculate_correlation_matrix(data[data['ADHD_Status'] == 'ADHD'], apq_vars)
-                corr_non_adhd = calculate_correlation_matrix(data[data['ADHD_Status'] == 'Non-ADHD'], apq_vars)
-
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    fig_corr_adhd = px.imshow(
-                        corr_adhd,
-                        text_auto=True,
-                        aspect="auto",
-                        title="APQ Correlations - ADHD Group",
-                        color_continuous_scale="RdBu_r"
-                    )
-                    fig_corr_adhd.update_layout(height=400)
-                    st.plotly_chart(fig_corr_adhd, use_container_width=True)
-
-                with col2:
-                    fig_corr_non_adhd = px.imshow(
-                        corr_non_adhd,
-                        text_auto=True,
-                        aspect="auto",
-                        title="APQ Correlations - Non-ADHD Group",
-                        color_continuous_scale="RdBu_r"
-                    )
-                    fig_corr_non_adhd.update_layout(height=400)
-                    st.plotly_chart(fig_corr_non_adhd, use_container_width=True)
-
-                # 相关性差异分析
-                st.markdown("#### Correlation Differences Between Groups")
-
-                # 计算相关性差异
-                corr_diff = corr_adhd - corr_non_adhd
-
-                fig_corr_diff = px.imshow(
-                    corr_diff,
-                    text_auto=True,
-                    aspect="auto",
-                    title="Correlation Differences (ADHD - Non-ADHD)",
-                    color_continuous_scale="RdBu_r"
-                )
-                fig_corr_diff.update_layout(height=500)
-                st.plotly_chart(fig_corr_diff, use_container_width=True)
-
-                # 显示最大的相关性差异
-                st.markdown("#### Largest Correlation Differences")
-
-                # 获取上三角矩阵的差异
-                mask = np.triu(np.ones_like(corr_diff, dtype=bool), k=1)
-                corr_diff_masked = corr_diff.mask(mask)
-
-                # 展平并排序
-                corr_diff_flat = corr_diff_masked.stack().reset_index()
-                corr_diff_flat.columns = ['Variable1', 'Variable2', 'Correlation_Difference']
-                corr_diff_flat['Abs_Difference'] = abs(corr_diff_flat['Correlation_Difference'])
-                corr_diff_flat = corr_diff_flat.sort_values('Abs_Difference', ascending=False)
-
-                st.dataframe(corr_diff_flat.head(10), use_container_width=True, hide_index=True)
-
-    with tab3:
         # Question 3: SDQ-APQ Relationships by Gender
         st.markdown("### SDQ-APQ Relationships by Gender")
-        st.markdown(
-            "* What is the relationship between SDQ subscales (Externalizing, Internalizing, Total Difficulties) and parenting practices (APQ dimensions), and does this relationship vary by gender?")
+        st.markdown("* What is the relationship between SDQ subcategories (Externalizing, Internalizing, Total Difficulties) and APQ Parenting Practices?")
+        st.markdown("* How does this relationship vary by gender?")
 
         # 计算SDQ子量表
         if 'SDQ_SDQ_Emotional_Problems' in data.columns and 'SDQ_SDQ_Hyperactivity' in data.columns and 'SDQ_SDQ_Conduct_Problems' in data.columns and 'SDQ_SDQ_Peer_Problems' in data.columns:
@@ -485,74 +368,6 @@ def main():
                     selected_apq = st.selectbox("Select APQ Variable:", apq_vars)
 
                 if selected_sdq and selected_apq:
-                    # 整体相关性
-                    st.markdown("#### Overall SDQ-APQ Correlation")
-
-                    # 确保两个变量有相同的有效数据点
-                    valid_data = data[[selected_sdq, selected_apq]].dropna()
-                    if len(valid_data) > 0:
-                        overall_corr, overall_p = pearsonr(valid_data[selected_sdq], valid_data[selected_apq])
-                    else:
-                        overall_corr, overall_p = np.nan, np.nan
-
-                    col1, col2, col3 = st.columns(3)
-
-                    with col1:
-                        if not np.isnan(overall_corr):
-                            st.markdown(create_metric_card("Correlation", f"{overall_corr:.4f}"),
-                                        unsafe_allow_html=True)
-                        else:
-                            st.markdown(create_metric_card("Correlation", "N/A"), unsafe_allow_html=True)
-
-                    with col2:
-                        if not np.isnan(overall_p):
-                            st.markdown(create_metric_card("P-value", f"{overall_p:.4f}"), unsafe_allow_html=True)
-                        else:
-                            st.markdown(create_metric_card("P-value", "N/A"), unsafe_allow_html=True)
-
-                    with col3:
-                        if not np.isnan(overall_p):
-                            significance = "Significant" if overall_p < 0.05 else "Not Significant"
-                        else:
-                            significance = "N/A"
-                        st.markdown(create_metric_card("Result", significance), unsafe_allow_html=True)
-
-                    # 按性别分组分析
-                    st.markdown("#### SDQ-APQ Correlations by Gender")
-
-                    gender_correlations = []
-
-                    for gender in ['Male', 'Female']:
-                        gender_data = data[data['Gender'] == gender]
-                        if len(gender_data) > 10:  # 确保有足够的数据点
-                            valid_gender_data = gender_data[[selected_sdq, selected_apq]].dropna()
-                            if len(valid_gender_data) > 10:
-                                corr, p_val = pearsonr(valid_gender_data[selected_sdq], valid_gender_data[selected_apq])
-                                gender_correlations.append({
-                                    'Gender': gender,
-                                    'Correlation': corr,
-                                    'P_Value': p_val,
-                                    'Sample_Size': len(valid_gender_data)
-                                })
-
-                    if gender_correlations:
-                        gender_corr_df = pd.DataFrame(gender_correlations)
-
-                        # 表格
-                        st.dataframe(gender_corr_df, use_container_width=True, hide_index=True)
-
-                        # 图表
-                        fig_gender_corr = px.bar(
-                            gender_corr_df,
-                            x='Gender',
-                            y='Correlation',
-                            title=f'{selected_sdq} vs {selected_apq} - Correlation by Gender',
-                            color='Correlation',
-                            color_continuous_scale='RdBu_r'
-                        )
-                        fig_gender_corr.update_layout(height=400)
-                        st.plotly_chart(fig_gender_corr, use_container_width=True)
-
                     # 散点图分析
                     st.markdown("#### Scatter Plot Analysis by Gender")
 
@@ -567,48 +382,6 @@ def main():
                     )
                     fig_scatter.update_layout(height=500)
                     st.plotly_chart(fig_scatter, use_container_width=True)
-
-                    # 按性别和ADHD状态分析
-                    if 'ADHD_Status' in data.columns:
-                        st.markdown("#### 🎯 SDQ-APQ Correlations by Gender and ADHD Status")
-
-                        # 创建分组分析
-                        group_correlations = []
-
-                        for gender in ['Male', 'Female']:
-                            for adhd_status in ['ADHD', 'Non-ADHD']:
-                                group_data = data[(data['Gender'] == gender) & (data['ADHD_Status'] == adhd_status)]
-                                if len(group_data) > 10:
-                                    valid_group_data = group_data[[selected_sdq, selected_apq]].dropna()
-                                    if len(valid_group_data) > 10:
-                                        corr, p_val = pearsonr(valid_group_data[selected_sdq],
-                                                               valid_group_data[selected_apq])
-                                        group_correlations.append({
-                                            'Gender': gender,
-                                            'ADHD_Status': adhd_status,
-                                            'Correlation': corr,
-                                            'P_Value': p_val,
-                                            'Sample_Size': len(valid_group_data)
-                                        })
-
-                        if group_correlations:
-                            group_corr_df = pd.DataFrame(group_correlations)
-
-                            # 热力图
-                            pivot_corr = group_corr_df.pivot(index='Gender', columns='ADHD_Status',
-                                                             values='Correlation')
-
-                            fig_heatmap = px.imshow(
-                                pivot_corr,
-                                text_auto=True,
-                                aspect="auto",
-                                title=f'{selected_sdq} vs {selected_apq} - Correlation Heatmap',
-                                color_continuous_scale="RdBu_r"
-                            )
-                            st.plotly_chart(fig_heatmap, use_container_width=True)
-
-                            # 详细表格
-                            st.dataframe(group_corr_df, use_container_width=True, hide_index=True)
 
     # 页脚
     st.markdown(

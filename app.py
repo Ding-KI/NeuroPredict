@@ -111,10 +111,10 @@ with st.sidebar:
 
     # 初始化session state
     if 'current_page' not in st.session_state:
-        st.session_state.current_page = "Dashboard"
+        st.session_state.current_page = "About"
 
     # 创建导航按钮
-    pages = ["Dashboard", "Descriptive", "Diagnostic"]
+    pages = ["About", "Descriptive", "Diagnostic", "Predictive", "Prescriptive"]
 
     for page in pages:
         # 当前页面使用primary类型（白底绿字），其他页面使用secondary类型（绿底白字）
@@ -133,9 +133,11 @@ with st.sidebar:
 
 # 页面映射
 page_files = {
-    "Dashboard": "app_pages/Dashboard.py",
+    "About": "app_pages/Dashboard.py",
     "Descriptive": "app_pages/Descriptive.py",
-    "Diagnostic": "app_pages/Diagnostic.py"
+    "Diagnostic": "app_pages/Diagnostic.py",
+    "Predictive": "app_pages/Predictive.py",
+    "Prescriptive": "app_pages/Prescriptive.py"
 }
 
 # 加载选中的页面

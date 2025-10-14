@@ -208,68 +208,25 @@ def main():
     data = load_data()
 
     # 创建标签页
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "Demographics",
-        "ADHD by Gender",
+    tab1, tab2, tab3 = st.tabs([
+        "Gender Distribution",
         "APQ Questionnaire",
         "SDQ Questionnaire",
-        "Parents' SES"
     ])
 
     with tab1:
         # Question 1: Demographics Distribution
         st.markdown("### Distribution of Participants by Key Demographics")
-        st.markdown(
-            "* What is the distribution of participants by key demographics (e.g., study site, ethnicity, race, sex)? ")
 
-        # 第一行：研究站点和性别分布
+        if 'Gender' in data.columns and 'ADHD_Status' in data.columns:
+            # 交叉表
+            gender_counts = data['Gender'].value_counts()
+            crosstab = pd.crosstab(data['Gender'], data['ADHD_Status'], margins=True)
+            crosstab_pct = pd.crosstab(data['Gender'], data['ADHD_Status'], normalize='index') * 100
+        
         col1, col2 = st.columns(2)
-
         with col1:
-            # 研究站点分布
-            if 'Basic_Demos_Study_Site' in data.columns:
-                site_counts = data['Basic_Demos_Study_Site'].value_counts().sort_index()
-                site_percentages = (site_counts / len(data) * 100).round(2)
-
-                st.markdown("##### Study Site Distribution")
-                site_df = pd.DataFrame({
-                    'Site': [f'Site {i}' for i in site_counts.index],
-                    'Count': site_counts.values,
-                    'Percentage': [f'{p}%' for p in site_percentages.values]
-                })
-                st.dataframe(site_df, use_container_width=True, hide_index=True)
-
-                # 研究站点饼图
-                fig_site = px.pie(
-                    values=site_counts.values,
-                    names=[f"Site {i}" for i in site_counts.index],
-                    title="Study Site Distribution",
-                    color_discrete_sequence=px.colors.qualitative.Set3
-                )
-                fig_site.update_layout(showlegend=True, height=400)
-                st.plotly_chart(fig_site, use_container_width=True)
-
-        with col2:
-            # 性别分布
-            if 'Gender' in data.columns:
-                gender_counts = data['Gender'].value_counts()
-                gender_percentages = (gender_counts / len(data) * 100).round(2)
-
-                st.markdown("##### Gender Distribution")
-                gender_df = pd.DataFrame({
-                    'Gender': gender_counts.index,
-                    'Count': gender_counts.values,
-                    'Percentage': [f'{p}%' for p in gender_percentages.values]
-                })
-                st.dataframe(gender_df, use_container_width=True, hide_index=True)
-                st.markdown("   ")
-                st.markdown("   ")
-                st.markdown("   ")
-                st.markdown("   ")
-
-
-
-                # 性别柱状图
+            # 性别柱状图
                 fig_gender = px.bar(
                     x=gender_counts.index,
                     y=gender_counts.values,
@@ -284,127 +241,26 @@ def main():
                     height=400
                 )
                 st.plotly_chart(fig_gender, use_container_width=True)
-
-        # 第二行：种族和民族分布
-        col3, col4 = st.columns(2)
-
-        with col3:
-            if 'PreInt_Demos_Fam_Child_Ethnicity' in data.columns:
-                ethnicity_counts = data['PreInt_Demos_Fam_Child_Ethnicity'].value_counts().sort_index()
-                ethnicity_percentages = (ethnicity_counts / len(data) * 100).round(2)
-
-                st.markdown("##### Ethnicity Distribution")
-                ethnicity_labels = {0: 'Not Hispanic/Latino', 1: 'Hispanic/Latino', 2: 'Unknown', 3: 'Other'}
-                ethnicity_df = pd.DataFrame({
-                    'Ethnicity': [ethnicity_labels.get(i, f'Category {i}') for i in ethnicity_counts.index],
-                    'Count': ethnicity_counts.values,
-                    'Percentage': [f'{p}%' for p in ethnicity_percentages.values]
-                })
-                st.dataframe(ethnicity_df, use_container_width=True, hide_index=True)
-
-                # 民族分布饼图
-                fig_ethnicity = px.pie(
-                    values=ethnicity_counts.values,
-                    names=[ethnicity_labels.get(i, f'Category {i}') for i in ethnicity_counts.index],
-                    title="Ethnicity Distribution",
-                    color_discrete_sequence=px.colors.qualitative.Pastel1
-                )
-                fig_ethnicity.update_layout(showlegend=True, height=400)
-                st.plotly_chart(fig_ethnicity, use_container_width=True)
-
-        with col4:
-            if 'PreInt_Demos_Fam_Child_Race' in data.columns:
-                race_counts = data['PreInt_Demos_Fam_Child_Race'].value_counts().sort_index()
-                race_percentages = (race_counts / len(data) * 100).round(2)
-
-                st.markdown("##### Race Distribution")
-                race_labels = {
-                    0: 'White', 1: 'Black/African American', 2: 'Asian',
-                    3: 'American Indian/Alaska Native', 4: 'Native Hawaiian/Pacific Islander',
-                    5: 'Other', 6: 'Multi-racial', 7: 'Unknown', 8: 'Refused',
-                    9: 'Not Applicable', 10: 'Missing', 11: 'Other'
-                }
-                race_df = pd.DataFrame({
-                    'Race': [race_labels.get(i, f'Category {i}') for i in race_counts.index],
-                    'Count': race_counts.values,
-                    'Percentage': [f'{p}%' for p in race_percentages.values]
-                })
-                st.dataframe(race_df, use_container_width=True, hide_index=True)
-
-                # 种族分布水平柱状图
-                fig_race = px.bar(
-                    x=race_counts.values,
-                    y=[race_labels.get(i, f'Category {i}') for i in race_counts.index],
-                    title="Race Distribution",
-                    orientation='h',
-                    color=race_counts.values,
-                    color_continuous_scale='Viridis'
-                )
-                fig_race.update_layout(
-                    xaxis_title="Count",
-                    yaxis_title="Race",
-                    height=400,
-                    showlegend=False
-                )
-                st.plotly_chart(fig_race, use_container_width=True)
-
-    with tab2:
-        # Question 2: ADHD Diagnosis Differences by Gender
-        st.markdown("### ADHD Diagnosis Differences by Gender")
-        st.markdown("* Are there significant differences in ADHD diagnosis outcomes between males and females?")
-
-        if 'Gender' in data.columns and 'ADHD_Status' in data.columns:
-            # 交叉表
-            crosstab = pd.crosstab(data['Gender'], data['ADHD_Status'], margins=True)
-            crosstab_pct = pd.crosstab(data['Gender'], data['ADHD_Status'], normalize='index') * 100
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.markdown("#### ADHD Status by Gender (Counts)")
-                st.dataframe(crosstab, use_container_width=True)
-
-            with col2:
-                st.markdown("#### ADHD Status by Gender (Percentages)")
-                crosstab_pct_formatted = crosstab_pct.round(2).astype(str) + '%'
-                st.dataframe(crosstab_pct_formatted, use_container_width=True)
-
-            # 统计检验
-            chi2, p_value, contingency_table = perform_chi_square_test(data, 'Gender', 'ADHD_Status')
-
-            if chi2 is not None:
-                st.markdown("#### 🔬 Statistical Analysis")
-                col1, col2, col3 = st.columns(3)
-
-                with col1:
-                    st.markdown(create_metric_card("Chi-square", f"{chi2:.4f}"), unsafe_allow_html=True)
-
-                with col2:
-                    st.markdown(create_metric_card("P-value", f"{p_value:.4f}"), unsafe_allow_html=True)
-
-                with col3:
-                    significance = "Significant" if p_value < 0.05 else "Not Significant"
-                    st.markdown(create_metric_card("Result", significance), unsafe_allow_html=True)
-
-                # 可视化
-                fig_crosstab = px.bar(
+                
+        with col2:
+            fig_crosstab = px.bar(
                     crosstab.drop('All', axis=1).drop('All', axis=0),
                     title="ADHD Status Distribution by Gender",
                     barmode='group',
                     color_discrete_sequence=['#e74c3c', '#3498db']
                 )
-                fig_crosstab.update_layout(
+            fig_crosstab.update_layout(
                     xaxis_title="Gender",
                     yaxis_title="Count",
                     legend_title="ADHD Status"
                 )
-                st.plotly_chart(fig_crosstab, use_container_width=True)
+            st.plotly_chart(fig_crosstab, use_container_width=True)
 
-    with tab3:
+    with tab2:
         # Question 3: APQ Questionnaire Distribution
         st.markdown("### APQ Questionnaire Distribution")
         st.markdown(
-            "* How are the scores on each dimension of the APQ questionnaire distributed across different genders and ADHD groups?")
+            "How are the scores on each dimension of the APQ questionnaire distributed across different genders and ADHD groups?")
 
         # APQ变量
         apq_vars = [col for col in data.columns if col.startswith('APQ_P_APQ_P_')]
@@ -414,19 +270,6 @@ def main():
             selected_apq = st.selectbox("Select APQ Variable:", apq_vars)
 
             if selected_apq:
-                # 描述性统计
-                desc_stats = data.groupby(['Gender', 'ADHD_Status'])[selected_apq].agg([
-                    'count', 'mean', 'std', 'min', 'max'
-                ]).round(2)
-
-                st.markdown(f"#### Descriptive Statistics for {selected_apq}")
-                st.dataframe(desc_stats.reset_index(), use_container_width=True, hide_index=True)
-
-                # 可视化
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    # 箱线图
                     fig_box = px.box(
                         data,
                         x='Gender',
@@ -437,53 +280,11 @@ def main():
                     )
                     st.plotly_chart(fig_box, use_container_width=True)
 
-                with col2:
-                    # 小提琴图
-                    fig_violin = px.violin(
-                        data,
-                        x='Gender',
-                        y=selected_apq,
-                        color='ADHD_Status',
-                        title=f"{selected_apq} Distribution (Violin Plot)",
-                        color_discrete_map={'ADHD': '#e74c3c', 'Non-ADHD': '#3498db'}
-                    )
-                    st.plotly_chart(fig_violin, use_container_width=True)
-
-                # 统计检验
-                st.markdown("#### Statistical Tests")
-
-                # 按性别分组进行t检验
-                male_adhd = data[(data['Gender'] == 'Male') & (data['ADHD_Status'] == 'ADHD')][selected_apq].dropna()
-                male_non_adhd = data[(data['Gender'] == 'Male') & (data['ADHD_Status'] == 'Non-ADHD')][
-                    selected_apq].dropna()
-                female_adhd = data[(data['Gender'] == 'Female') & (data['ADHD_Status'] == 'ADHD')][
-                    selected_apq].dropna()
-                female_non_adhd = data[(data['Gender'] == 'Female') & (data['ADHD_Status'] == 'Non-ADHD')][
-                    selected_apq].dropna()
-
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    if len(male_adhd) > 0 and len(male_non_adhd) > 0:
-                        t_stat_male, p_value_male = stats.ttest_ind(male_adhd, male_non_adhd)
-                        st.markdown(f"**Male (ADHD vs Non-ADHD):**")
-                        st.markdown(f"- t-statistic: {t_stat_male:.4f}")
-                        st.markdown(f"- p-value: {p_value_male:.4f}")
-                        st.markdown(f"- Significant: {'Yes' if p_value_male < 0.05 else 'No'}")
-
-                with col2:
-                    if len(female_adhd) > 0 and len(female_non_adhd) > 0:
-                        t_stat_female, p_value_female = stats.ttest_ind(female_adhd, female_non_adhd)
-                        st.markdown(f"**Female (ADHD vs Non-ADHD):**")
-                        st.markdown(f"- t-statistic: {t_stat_female:.4f}")
-                        st.markdown(f"- p-value: {p_value_female:.4f}")
-                        st.markdown(f"- Significant: {'Yes' if p_value_female < 0.05 else 'No'}")
-
-    with tab4:
+    with tab3:
         # Question 4: SDQ Questionnaire Distribution
         st.markdown("### SDQ Questionnaire Distribution")
         st.markdown(
-            "* What are the distribution characteristics of the Difficulties Total, Externalizing, and Internalizing scores in the SDQ questionnaire across different genders and ADHD diagnostic groups?")
+            "What are the distribution characteristics of the Difficulties Total, Externalizing, and Internalizing scores in the SDQ questionnaire across different genders and ADHD diagnostic groups?")
 
         # SDQ变量
         sdq_vars = [col for col in data.columns if col.startswith('SDQ_SDQ_')]
@@ -502,31 +303,6 @@ def main():
                 selected_sdq = st.selectbox("Select SDQ Variable:", sdq_analysis_vars)
 
                 if selected_sdq:
-                    # 描述性统计
-                    desc_stats_sdq = data.groupby(['Gender', 'ADHD_Status'])[selected_sdq].agg([
-                        'count', 'mean', 'std', 'min', 'max'
-                    ]).round(2)
-
-                    st.markdown(f"#### Descriptive Statistics for {selected_sdq}")
-                    st.dataframe(desc_stats_sdq.reset_index(), use_container_width=True, hide_index=True)
-
-                    # 可视化
-                    col1, col2 = st.columns(2)
-
-                    with col1:
-                        # 箱线图
-                        fig_box_sdq = px.box(
-                            data,
-                            x='Gender',
-                            y=selected_sdq,
-                            color='ADHD_Status',
-                            title=f"{selected_sdq} Distribution by Gender and ADHD Status",
-                            color_discrete_map={'ADHD': '#e74c3c', 'Non-ADHD': '#3498db'}
-                        )
-                        st.plotly_chart(fig_box_sdq, use_container_width=True)
-
-                    with col2:
-                        # 密度图
                         fig_density = px.histogram(
                             data,
                             x=selected_sdq,
@@ -537,141 +313,6 @@ def main():
                             marginal='box'
                         )
                         st.plotly_chart(fig_density, use_container_width=True)
-
-                    # 统计检验
-                    st.markdown("#### Statistical Tests")
-
-                    # 按性别分组进行t检验
-                    male_adhd_sdq = data[(data['Gender'] == 'Male') & (data['ADHD_Status'] == 'ADHD')][
-                        selected_sdq].dropna()
-                    male_non_adhd_sdq = data[(data['Gender'] == 'Male') & (data['ADHD_Status'] == 'Non-ADHD')][
-                        selected_sdq].dropna()
-                    female_adhd_sdq = data[(data['Gender'] == 'Female') & (data['ADHD_Status'] == 'ADHD')][
-                        selected_sdq].dropna()
-                    female_non_adhd_sdq = data[(data['Gender'] == 'Female') & (data['ADHD_Status'] == 'Non-ADHD')][
-                        selected_sdq].dropna()
-
-                    col1, col2 = st.columns(2)
-
-                    with col1:
-                        if len(male_adhd_sdq) > 0 and len(male_non_adhd_sdq) > 0:
-                            t_stat_male_sdq, p_value_male_sdq = stats.ttest_ind(male_adhd_sdq, male_non_adhd_sdq)
-                            st.markdown(f"**Male (ADHD vs Non-ADHD):**")
-                            st.markdown(f"- t-statistic: {t_stat_male_sdq:.4f}")
-                            st.markdown(f"- p-value: {p_value_male_sdq:.4f}")
-                            st.markdown(f"- Significant: {'Yes' if p_value_male_sdq < 0.05 else 'No'}")
-
-                    with col2:
-                        if len(female_adhd_sdq) > 0 and len(female_non_adhd_sdq) > 0:
-                            t_stat_female_sdq, p_value_female_sdq = stats.ttest_ind(female_adhd_sdq,
-                                                                                    female_non_adhd_sdq)
-                            st.markdown(f"**Female (ADHD vs Non-ADHD):**")
-                            st.markdown(f"- t-statistic: {t_stat_female_sdq:.4f}")
-                            st.markdown(f"- p-value: {p_value_female_sdq:.4f}")
-                            st.markdown(f"- Significant: {'Yes' if p_value_female_sdq < 0.05 else 'No'}")
-
-    with tab5:
-        # Question 5: Parents' Education and Occupation Distribution
-        st.markdown("### Parents' Education and Occupation Distribution")
-        st.markdown(
-            "* How are parents' education level and occupational status distributed among children with ADHD and those without ADHD?")
-
-        # 父母教育和职业变量
-        parent_vars = {
-            'Barratt_Barratt_P1_Edu': 'Parent 1 Education Level',
-            'Barratt_Barratt_P2_Edu': 'Parent 2 Education Level',
-            'Barratt_Barratt_P1_Occ': 'Parent 1 Occupation Level',
-            'Barratt_Barratt_P2_Occ': 'Parent 2 Occupation Level'
-        }
-
-        # 检查哪些变量存在
-        available_parent_vars = {k: v for k, v in parent_vars.items() if k in data.columns}
-
-        if available_parent_vars and 'ADHD_Status' in data.columns:
-            # 选择要分析的变量
-            selected_parent_var = st.selectbox("Select Parent Variable:", list(available_parent_vars.keys()),
-                                               format_func=lambda x: available_parent_vars[x])
-
-            if selected_parent_var:
-                # 描述性统计
-                desc_stats_parent = data.groupby('ADHD_Status')[selected_parent_var].agg([
-                    'count', 'mean', 'std', 'min', 'max', 'median'
-                ]).round(2)
-
-                st.markdown(f"#### 📋 Descriptive Statistics for {available_parent_vars[selected_parent_var]}")
-                st.dataframe(desc_stats_parent.reset_index(), use_container_width=True, hide_index=True)
-
-                # 可视化
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    # 箱线图
-                    fig_box_parent = px.box(
-                        data,
-                        x='ADHD_Status',
-                        y=selected_parent_var,
-                        title=f"{available_parent_vars[selected_parent_var]} Distribution by ADHD Status",
-                        color='ADHD_Status',
-                        color_discrete_map={'ADHD': '#e74c3c', 'Non-ADHD': '#3498db'}
-                    )
-                    st.plotly_chart(fig_box_parent, use_container_width=True)
-
-                with col2:
-                    # 直方图
-                    fig_hist_parent = px.histogram(
-                        data,
-                        x=selected_parent_var,
-                        color='ADHD_Status',
-                        title=f"{available_parent_vars[selected_parent_var]} Distribution",
-                        color_discrete_map={'ADHD': '#e74c3c', 'Non-ADHD': '#3498db'},
-                        marginal='box',
-                        nbins=20
-                    )
-                    st.plotly_chart(fig_hist_parent, use_container_width=True)
-
-                # 统计检验
-                st.markdown("#### 🔬 Statistical Analysis")
-
-                # 按ADHD状态分组进行t检验
-                adhd_data = data[data['ADHD_Status'] == 'ADHD'][selected_parent_var].dropna()
-                non_adhd_data = data[data['ADHD_Status'] == 'Non-ADHD'][selected_parent_var].dropna()
-
-                if len(adhd_data) > 0 and len(non_adhd_data) > 0:
-                    t_stat, p_value = stats.ttest_ind(adhd_data, non_adhd_data)
-
-                    col1, col2, col3 = st.columns(3)
-
-                    with col1:
-                        st.markdown(create_metric_card("T-statistic", f"{t_stat:.4f}"), unsafe_allow_html=True)
-
-                    with col2:
-                        st.markdown(create_metric_card("P-value", f"{p_value:.4f}"), unsafe_allow_html=True)
-
-                    with col3:
-                        significance = "Significant" if p_value < 0.05 else "Not Significant"
-                        st.markdown(create_metric_card("Result", significance), unsafe_allow_html=True)
-
-                    # 效应大小 (Cohen's d)
-                    pooled_std = np.sqrt(((len(adhd_data) - 1) * adhd_data.std() ** 2 +
-                                          (len(non_adhd_data) - 1) * non_adhd_data.std() ** 2) /
-                                         (len(adhd_data) + len(non_adhd_data) - 2))
-                    cohens_d = (adhd_data.mean() - non_adhd_data.mean()) / pooled_std
-
-                    st.markdown(f"**Effect Size (Cohen's d):** {cohens_d:.4f}")
-
-                    # 解释效应大小
-                    if abs(cohens_d) < 0.2:
-                        effect_interpretation = "Small effect"
-                    elif abs(cohens_d) < 0.5:
-                        effect_interpretation = "Medium effect"
-                    elif abs(cohens_d) < 0.8:
-                        effect_interpretation = "Large effect"
-                    else:
-                        effect_interpretation = "Very large effect"
-
-                    st.markdown(f"**Effect Size Interpretation:** {effect_interpretation}")
-        else:
-            st.info("Parent education and occupation variables not available in the current dataset.")
 
     # 页脚
     st.markdown(
