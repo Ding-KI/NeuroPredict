@@ -165,7 +165,7 @@ def main():
     """)
 
     # Load the model
-    model = load_model('/Users/kaviya/Repositories/ProHi/NeuroPredict copy/model/best_model_Decision_Tree_Depth=3.joblib')
+    model = load_model('model/best_model_Decision_Tree_Depth=3.joblib')
 
     # Use a form to collect all inputs and submit them at once
     with st.form("prediction_form"):

@@ -120,8 +120,8 @@ def compute_shap_values():
     Loads model and data, then computes the SHAP explainer and values.
     """
     try:
-        model = joblib.load('/Users/kaviya/Repositories/ProHi/NeuroPredict copy/model/best_model_Decision_Tree_Depth=3.joblib')
-        df = pd.read_csv('/Users/kaviya/Repositories/ProHi/NeuroPredict copy/data/processed_data/df_preprocessed.csv')
+        model = joblib.load('model/best_model_Decision_Tree_Depth=3.joblib')
+        df = pd.read_csv('data/processed_data/df_preprocessed.csv')
 
         ADHD_Outcome = 'ADHD_Outcome' 
         if ADHD_Outcome not in df.columns:
