@@ -13,6 +13,10 @@ from sklearn.model_selection import train_test_split
 from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings("ignore")
+import threading
+
+# Create a lock for thread safety
+_lock = threading.RLock()
 
 st.markdown("""
 <style>
@@ -174,17 +178,21 @@ with tab1:
     st.markdown("This plot shows which feature values pushed the prediction up (in red) or down (in blue).")
     
     # We use the raw explainer object and the specific sample's SHAP values
-    fig, ax = plt.subplots()
-    fig = shap.plots.force(shap_values_class_1[sample_index], matplotlib=True)
-    st.pyplot(fig, bbox_inches='tight')
+    with _lock:
+        plt.figure(figsize=(10, 6))
+        shap.plots.force(shap_values_class_1[sample_index], matplotlib=True)
+        fig = plt.gcf()
+        st.pyplot(fig)
 
     # Waterfall Plot
     st.subheader("SHAP Waterfall Plot")
     st.markdown("This plot breaks down the contribution of each feature to the final prediction.")
     
-    fig_waterfall, ax_waterfall = plt.subplots()
-    shap.plots.waterfall(shap_values_class_1[sample_index], max_display=16, show=False)
-    st.pyplot(fig_waterfall, bbox_inches='tight')
+    with _lock:
+        plt.figure(figsize=(10, 8))
+        shap.plots.waterfall(shap_values_class_1[sample_index], max_display=16, show=False)
+        fig_waterfall = plt.gcf()
+        st.pyplot(fig_waterfall)
 
 with tab2:
     st.header("Model Explanations")
@@ -197,17 +205,21 @@ with tab2:
         st.subheader("Overall Feature Importance")
         st.markdown("This plot shows the average impact of each feature on the model's predictions.")
 
-        fig_bar, ax_bar = plt.subplots()
-        shap.plots.bar(shap_values_class_1, max_display=16, show=False)
-        st.pyplot(fig_bar, bbox_inches='tight')
+        with _lock:
+            plt.figure(figsize=(10, 6))
+            shap.plots.bar(shap_values_class_1, max_display=16, show=False)
+            fig_bar = plt.gcf()
+            st.pyplot(fig_bar)
     with col2:
         # Beeswarm Plot
         st.subheader("SHAP Beeswarm Plot")
         st.markdown("This plot shows the SHAP value for every feature for every sample. The color indicates the feature's value.")
 
-        fig_beeswarm, ax_beeswarm = plt.subplots()
-        shap.plots.beeswarm(shap_values_class_1, max_display=16, show=False)
-        st.pyplot(fig_beeswarm, bbox_inches='tight')
+        with _lock:
+            plt.figure(figsize=(10, 6))
+            shap.plots.beeswarm(shap_values_class_1, max_display=16, show=False)
+            fig_beeswarm = plt.gcf()
+            st.pyplot(fig_beeswarm)
 
     st.markdown( "----")
     st.subheader("In Females")
@@ -215,30 +227,38 @@ with tab2:
 
     with col1:
          # Bar Plot (Females)
-        fig_bar, ax_bar = plt.subplots()
-        shap.plots.bar(explanation_female, max_display=16, show=False)
-        st.pyplot(fig_bar, bbox_inches='tight')
+        with _lock:
+            plt.figure(figsize=(10, 6))
+            shap.plots.bar(explanation_female, max_display=16, show=False)
+            fig_bar = plt.gcf()
+            st.pyplot(fig_bar)
 
     with col2:
         # Beeswarm Plot (Females)
-        fig_beeswarm, ax_beeswarm = plt.subplots()
-        shap.plots.beeswarm(explanation_female, max_display=16, show=False)
-        st.pyplot(fig_beeswarm, bbox_inches='tight')
+        with _lock:
+            plt.figure(figsize=(10, 6))
+            shap.plots.beeswarm(explanation_female, max_display=16, show=False)
+            fig_beeswarm = plt.gcf()
+            st.pyplot(fig_beeswarm)
         
     st.subheader("In Males")
     col1, col2 = st.columns(2)
 
     with col1:
         # Bar Plot (Males)
-        fig_bar, ax_bar = plt.subplots()
-        shap.plots.bar(explanation_male, max_display=16, show=False)
-        st.pyplot(fig_bar, bbox_inches='tight')
+        with _lock:
+            plt.figure(figsize=(10, 6))
+            shap.plots.bar(explanation_male, max_display=16, show=False)
+            fig_bar = plt.gcf()
+            st.pyplot(fig_bar)
 
     with col2:
         # Beeswarm Plot (Males)
-        fig_beeswarm, ax_beeswarm = plt.subplots()
-        shap.plots.beeswarm(explanation_male, max_display=16, show=False)
-        st.pyplot(fig_beeswarm, bbox_inches='tight')
+        with _lock:
+            plt.figure(figsize=(10, 6))
+            shap.plots.beeswarm(explanation_male, max_display=16, show=False)
+            fig_beeswarm = plt.gcf()
+            st.pyplot(fig_beeswarm)
 
 st.markdown("----")
 st.markdown(
