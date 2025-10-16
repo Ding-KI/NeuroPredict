@@ -340,7 +340,9 @@ def main():
                             color_continuous_scale='viridis',
                             labels={'F_Score': 'Importance', 'Feature': 'Feature Name'}
                         )
-                    fig_fscore.update_layout(height=400, yaxis={'categoryorder':'total ascending'})
+                    # 使用与类别图表一致的高度计算
+                    chart_height = max(400, 10 * 50)  # Top 10 特征使用固定间距
+                    fig_fscore.update_layout(height=chart_height, yaxis={'categoryorder':'total ascending'})
                     st.plotly_chart(fig_fscore, use_container_width=True)
 
                     # 按类别分析
@@ -371,8 +373,12 @@ def main():
                                         color_continuous_scale='viridis',
                                         labels={'F_Score': 'Importance', 'Feature': 'Feature Name'}
                                     )
-                                    # 根据特征数量调整图表高度
-                                    chart_height = max(300, len(category_results) * 50)
+                                    # 根据特征数量调整图表高度，APQ使用与SDQ相同的间距
+                                    if category == 'Parenting (APQ)':
+                                        # APQ使用与SDQ相同的间距计算
+                                        chart_height = max(400, 7 * 50)  # 使用SDQ的特征数量作为基准
+                                    else:
+                                        chart_height = max(300, len(category_results) * 50)
                                     fig_category.update_layout(height=chart_height)
                                     st.plotly_chart(fig_category, use_container_width=True)
 

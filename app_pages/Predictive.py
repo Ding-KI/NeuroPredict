@@ -180,12 +180,12 @@ def main():
                 st.markdown("<h4 style='margin-top:0;'>Parenting Questionnaire (APQ)</h4>", unsafe_allow_html=True)
                 apq_responses = {}
                 for key, question in apq_questions.items():
-                    full_label = f"**{key}**\n\n{question}"
+                    full_label = f"**{key}**"
                     response = st.radio(full_label, options=list(apq_options.keys()), horizontal=True, key=key)
                     apq_responses[key] = response
 
                 # Gender under APQ to save space
-                st.markdown("<h5 style='margin-top:1rem;'>Gender</h5>", unsafe_allow_html=True)
+                st.markdown("<h4 style='margin-top:1rem;'>Gender</h4>", unsafe_allow_html=True)
                 gender_response = st.radio(
                        "**Please select the gender:**",
                        options=list(gender_options.keys()),
@@ -197,11 +197,14 @@ def main():
                 st.markdown("<h4 style='margin-top:0;'>Strengths and Difficulties Questionnaire (SDQ)</h4>", unsafe_allow_html=True)
                 sdq_responses = {}
                 for key, question in sdq_questions.items():
-                    full_label = f"**{key}**\n\n{question}"
+                    full_label = f"**{key}**"
                     response = st.radio(full_label, options=list(sdq_options.keys()), horizontal=True, key=key)
                     sdq_responses[key] = response
 
-            submitted = st.form_submit_button("Submit and Predict Outcome")
+            # Submit button centered below columns (no custom CSS)
+            _left, _center, _right = st.columns([1, 2, 1])
+            with _center:
+                submitted = st.form_submit_button("Submit and Predict Outcome", use_container_width=True)
         
     if submitted:
         if model is None:

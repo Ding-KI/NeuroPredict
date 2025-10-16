@@ -215,7 +215,6 @@ with tab1:
     
     # Force Plot 
     st.subheader("SHAP Force Plot")
-    st.markdown("This plot shows which feature values pushed the prediction up (in red) or down (in blue).")
     
     # We use the raw explainer object and the specific sample's SHAP values
     with _lock:
@@ -230,7 +229,7 @@ with tab1:
         # 应用特征名称映射
         shap_values_mapped = apply_feature_name_mapping(shap_values_rounded)
         
-        # 使用自定义参数来改善文本显示
+        # 使用自定义参数来改善文本显示，并将蓝色改为绿色
         shap.plots.force(shap_values_mapped, matplotlib=True, 
                         text_rotation=0, 
                         show=False)
@@ -241,17 +240,30 @@ with tab1:
         # 调整子图参数以提供更多空间给文本
         plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.15)
         
-        # 调整字体大小
+        # 将蓝色改为绿色
         for ax in fig.get_axes():
+            # 修改文本颜色
             for text in ax.texts:
                 if text.get_fontsize() > 8:  # 只调整较大的字体
                     text.set_fontsize(9.5)
+                # 将蓝色文本改为绿色
+                if text.get_color() == '#1f77b4' or 'blue' in str(text.get_color()).lower():
+                    text.set_color('#1D5746')  # 使用主题绿色
+            
+            # 修改图形元素颜色
+            for patch in ax.patches:
+                if patch.get_facecolor() == '#1f77b4' or 'blue' in str(patch.get_facecolor()).lower():
+                    patch.set_facecolor('#1D5746')  # 使用主题绿色
+            
+            # 修改线条颜色
+            for line in ax.lines:
+                if line.get_color() == '#1f77b4' or 'blue' in str(line.get_color()).lower():
+                    line.set_color('#1D5746')  # 使用主题绿色
         
         st.pyplot(fig)
 
     # Waterfall Plot
     st.subheader("SHAP Waterfall Plot")
-    st.markdown("This plot breaks down the contribution of each feature to the final prediction.")
     
     # 使用三列布局将图片固定在中间
     col1, col2, col3 = st.columns([1, 4, 1])
@@ -266,14 +278,12 @@ with tab1:
 
 with tab2:
     st.header("Model Explanations")
-    st.markdown("These plots summarize the model's behavior across the entire test set.")
 
     col1, col2 = st.columns(2)
 
     with col1:
         # Bar Plot
         st.subheader("Overall Feature Importance")
-        st.markdown("This plot shows the average impact of each feature on the model's predictions.")
 
         with _lock:
             plt.figure(figsize=(10, 6))
@@ -285,7 +295,6 @@ with tab2:
     with col2:
         # Beeswarm Plot
         st.subheader("SHAP Beeswarm Plot")
-        st.markdown("This plot shows the SHAP value for every feature for every sample. The color indicates the feature's value.")
 
         with _lock:
             plt.figure(figsize=(10, 6))
