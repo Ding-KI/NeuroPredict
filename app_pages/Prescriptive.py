@@ -180,7 +180,13 @@ with tab1:
     # We use the raw explainer object and the specific sample's SHAP values
     with _lock:
         plt.figure(figsize=(10, 6))
-        shap.plots.force(shap_values_class_1[sample_index], matplotlib=True)
+        
+        # 创建SHAP force plot，并设置数值精度
+        shap_values_rounded = shap_values_class_1[sample_index]
+        shap_values_rounded.values = np.round(shap_values_rounded.values, 2)
+        shap_values_rounded.data = np.round(shap_values_rounded.data, 2)
+        
+        shap.plots.force(shap_values_rounded, matplotlib=True)
         fig = plt.gcf()
         st.pyplot(fig)
 
@@ -188,11 +194,14 @@ with tab1:
     st.subheader("SHAP Waterfall Plot")
     st.markdown("This plot breaks down the contribution of each feature to the final prediction.")
     
-    with _lock:
-        plt.figure(figsize=(10, 8))
-        shap.plots.waterfall(shap_values_class_1[sample_index], max_display=16, show=False)
-        fig_waterfall = plt.gcf()
-        st.pyplot(fig_waterfall)
+    # 使用三列布局将图片固定在中间
+    col1, col2, col3 = st.columns([1, 4, 1])
+    with col2:
+        with _lock:
+            plt.figure(figsize=(8, 6))
+            shap.plots.waterfall(shap_values_class_1[sample_index], max_display=16, show=False)
+            fig_waterfall = plt.gcf()
+            st.pyplot(fig_waterfall)
 
 with tab2:
     st.header("Model Explanations")
