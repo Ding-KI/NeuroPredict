@@ -12,6 +12,29 @@ from datetime import datetime, timedelta
 
 warnings.filterwarnings("ignore")
 
+# 特征名称映射表 - 将技术名称转换为可读名称
+FEATURE_NAME_MAPPING = {
+    'APQ_P_APQ_P_CP': 'Parenting Corporal Punishment',
+    'APQ_P_APQ_P_ID': 'Parenting Inconsistent Discipline', 
+    'APQ_P_APQ_P_INV': 'Parenting Involvement',
+    'APQ_P_APQ_P_OPD': 'Parenting Other Discipline Practices',
+    'APQ_P_APQ_P_PM': 'Parenting Poor Monitoring',
+    'APQ_P_APQ_P_PP': 'Parenting Positive Parenting',
+    'SDQ_SDQ_Conduct_Problems': 'Conduct Problems',
+    'SDQ_SDQ_Difficulties_Total': 'Total Difficulties',
+    'SDQ_SDQ_Emotional_Problems': 'Emotional Problems',
+    'SDQ_SDQ_Externalizing': 'Externalizing Behavior',
+    'SDQ_SDQ_Generating_Impact': 'Impact on Child',
+    'SDQ_SDQ_Hyperactivity': 'Hyperactivity',
+    'SDQ_SDQ_Internalizing': 'Internalizing Behavior',
+    'SDQ_SDQ_Peer_Problems': 'Peer Problems',
+    'SDQ_SDQ_Prosocial': 'Prosocial Behavior',
+    'Sex_F': 'Gender (Female)',
+    'SDQ_Total_Difficulties': 'Total Difficulties',
+    'SDQ_Externalizing': 'Externalizing Behavior',
+    'SDQ_Internalizing': 'Internalizing Behavior'
+}
+
 # 自定义CSS样式
 st.markdown("""
 <style>
@@ -266,8 +289,12 @@ def main():
         apq_vars = [col for col in data.columns if col.startswith('APQ_P_APQ_P_')]
 
         if apq_vars and 'Gender' in data.columns and 'ADHD_Status' in data.columns:
-            # 选择APQ变量
-            selected_apq = st.selectbox("Select APQ Variable:", apq_vars)
+            # 选择APQ变量 - 使用可读名称
+            apq_readable_names = [FEATURE_NAME_MAPPING.get(var, var) for var in apq_vars]
+            apq_var_mapping = dict(zip(apq_readable_names, apq_vars))
+            
+            selected_apq_readable = st.selectbox("Select APQ Variable:", apq_readable_names)
+            selected_apq = apq_var_mapping[selected_apq_readable]
 
             if selected_apq:
                     fig_box = px.box(
@@ -275,7 +302,7 @@ def main():
                         x='Gender',
                         y=selected_apq,
                         color='ADHD_Status',
-                        title=f"{selected_apq} Distribution by Gender and ADHD Status",
+                        title=f"{selected_apq_readable} Distribution by Gender and ADHD Status",
                         color_discrete_map={'ADHD': '#e74c3c', 'Non-ADHD': '#3498db'}
                     )
                     st.plotly_chart(fig_box, use_container_width=True)
@@ -298,9 +325,13 @@ def main():
                 data['SDQ_Externalizing'] = data[['SDQ_SDQ_Hyperactivity', 'SDQ_SDQ_Conduct_Problems']].sum(axis=1)
                 data['SDQ_Internalizing'] = data[['SDQ_SDQ_Emotional_Problems', 'SDQ_SDQ_Peer_Problems']].sum(axis=1)
 
-                # 选择SDQ变量
+                # 选择SDQ变量 - 使用可读名称
                 sdq_analysis_vars = ['SDQ_Total_Difficulties', 'SDQ_Externalizing', 'SDQ_Internalizing']
-                selected_sdq = st.selectbox("Select SDQ Variable:", sdq_analysis_vars)
+                sdq_readable_names = [FEATURE_NAME_MAPPING.get(var, var) for var in sdq_analysis_vars]
+                sdq_var_mapping = dict(zip(sdq_readable_names, sdq_analysis_vars))
+                
+                selected_sdq_readable = st.selectbox("Select SDQ Variable:", sdq_readable_names)
+                selected_sdq = sdq_var_mapping[selected_sdq_readable]
 
                 if selected_sdq:
                         fig_density = px.histogram(
@@ -308,7 +339,7 @@ def main():
                             x=selected_sdq,
                             color='ADHD_Status',
                             facet_col='Gender',
-                            title=f"{selected_sdq} Distribution by Gender and ADHD Status",
+                            title=f"{selected_sdq_readable} Distribution by Gender and ADHD Status",
                             color_discrete_map={'ADHD': '#e74c3c', 'Non-ADHD': '#3498db'},
                             marginal='box'
                         )

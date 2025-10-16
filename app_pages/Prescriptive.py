@@ -15,8 +15,47 @@ import warnings
 warnings.filterwarnings("ignore")
 import threading
 
+# 特征名称映射表 - 将技术名称转换为可读名称
+FEATURE_NAME_MAPPING = {
+    'APQ_P_APQ_P_CP': 'Parenting Corporal Punishment',
+    'APQ_P_APQ_P_ID': 'Parenting Inconsistent Discipline', 
+    'APQ_P_APQ_P_INV': 'Parenting Involvement',
+    'APQ_P_APQ_P_OPD': 'Parenting Other Discipline Practices',
+    'APQ_P_APQ_P_PM': 'Parenting Poor Monitoring',
+    'APQ_P_APQ_P_PP': 'Parenting Positive Parenting',
+    'SDQ_SDQ_Conduct_Problems': 'Conduct Problems',
+    'SDQ_SDQ_Difficulties_Total': 'Total Difficulties',
+    'SDQ_SDQ_Emotional_Problems': 'Emotional Problems',
+    'SDQ_SDQ_Externalizing': 'Externalizing Behavior',
+    'SDQ_SDQ_Generating_Impact': 'Impact on Child',
+    'SDQ_SDQ_Hyperactivity': 'Hyperactivity',
+    'SDQ_SDQ_Internalizing': 'Internalizing Behavior',
+    'SDQ_SDQ_Peer_Problems': 'Peer Problems',
+    'SDQ_SDQ_Prosocial': 'Prosocial Behavior',
+    'Sex_F': 'Gender (Female)'
+}
+
 # Create a lock for thread safety
 _lock = threading.RLock()
+
+def apply_feature_name_mapping(shap_values, feature_names=None):
+    """
+    应用特征名称映射，将技术名称转换为可读名称
+    """
+    if hasattr(shap_values, 'feature_names'):
+        # 创建新的feature_names列表
+        new_feature_names = []
+        for name in shap_values.feature_names:
+            new_feature_names.append(FEATURE_NAME_MAPPING.get(name, name))
+        
+        # 创建新的SHAP Explanation对象
+        return shap.Explanation(
+            values=shap_values.values,
+            base_values=shap_values.base_values,
+            data=shap_values.data,
+            feature_names=new_feature_names
+        )
+    return shap_values
 
 st.markdown("""
 <style>
@@ -171,7 +210,10 @@ with tab1:
     sample_index = st.slider("Select a sample index:", 0, len(X_test) - 1, 5)
 
     st.subheader(f"Features for Sample #{sample_index}")
-    st.dataframe(X_test.iloc[[sample_index]], use_container_width=True)
+    # 创建带有可读列名的DataFrame
+    sample_data = X_test.iloc[[sample_index]].copy()
+    sample_data.columns = [FEATURE_NAME_MAPPING.get(col, col) for col in sample_data.columns]
+    st.dataframe(sample_data, use_container_width=True)
     
     # Force Plot 
     st.subheader("SHAP Force Plot")
@@ -181,12 +223,15 @@ with tab1:
     with _lock:
         plt.figure(figsize=(10, 6))
         
-        # 创建SHAP force plot，并设置数值精度
+        # 创建SHAP force plot，并设置数值精度和特征名称映射
         shap_values_rounded = shap_values_class_1[sample_index]
         shap_values_rounded.values = np.round(shap_values_rounded.values, 2)
         shap_values_rounded.data = np.round(shap_values_rounded.data, 2)
         
-        shap.plots.force(shap_values_rounded, matplotlib=True)
+        # 应用特征名称映射
+        shap_values_mapped = apply_feature_name_mapping(shap_values_rounded)
+        
+        shap.plots.force(shap_values_mapped, matplotlib=True)
         fig = plt.gcf()
         st.pyplot(fig)
 
@@ -199,7 +244,9 @@ with tab1:
     with col2:
         with _lock:
             plt.figure(figsize=(8, 6))
-            shap.plots.waterfall(shap_values_class_1[sample_index], max_display=16, show=False)
+            # 应用特征名称映射
+            shap_values_mapped = apply_feature_name_mapping(shap_values_class_1[sample_index])
+            shap.plots.waterfall(shap_values_mapped, max_display=16, show=False)
             fig_waterfall = plt.gcf()
             st.pyplot(fig_waterfall)
 
@@ -216,7 +263,9 @@ with tab2:
 
         with _lock:
             plt.figure(figsize=(10, 6))
-            shap.plots.bar(shap_values_class_1, max_display=16, show=False)
+            # 应用特征名称映射
+            shap_values_mapped = apply_feature_name_mapping(shap_values_class_1)
+            shap.plots.bar(shap_values_mapped, max_display=16, show=False)
             fig_bar = plt.gcf()
             st.pyplot(fig_bar)
     with col2:
@@ -226,7 +275,9 @@ with tab2:
 
         with _lock:
             plt.figure(figsize=(10, 6))
-            shap.plots.beeswarm(shap_values_class_1, max_display=16, show=False)
+            # 应用特征名称映射
+            shap_values_mapped = apply_feature_name_mapping(shap_values_class_1)
+            shap.plots.beeswarm(shap_values_mapped, max_display=16, show=False)
             fig_beeswarm = plt.gcf()
             st.pyplot(fig_beeswarm)
 
@@ -238,7 +289,9 @@ with tab2:
          # Bar Plot (Females)
         with _lock:
             plt.figure(figsize=(10, 6))
-            shap.plots.bar(explanation_female, max_display=16, show=False)
+            # 应用特征名称映射
+            shap_values_mapped = apply_feature_name_mapping(explanation_female)
+            shap.plots.bar(shap_values_mapped, max_display=16, show=False)
             fig_bar = plt.gcf()
             st.pyplot(fig_bar)
 
@@ -246,7 +299,9 @@ with tab2:
         # Beeswarm Plot (Females)
         with _lock:
             plt.figure(figsize=(10, 6))
-            shap.plots.beeswarm(explanation_female, max_display=16, show=False)
+            # 应用特征名称映射
+            shap_values_mapped = apply_feature_name_mapping(explanation_female)
+            shap.plots.beeswarm(shap_values_mapped, max_display=16, show=False)
             fig_beeswarm = plt.gcf()
             st.pyplot(fig_beeswarm)
         
@@ -257,7 +312,9 @@ with tab2:
         # Bar Plot (Males)
         with _lock:
             plt.figure(figsize=(10, 6))
-            shap.plots.bar(explanation_male, max_display=16, show=False)
+            # 应用特征名称映射
+            shap_values_mapped = apply_feature_name_mapping(explanation_male)
+            shap.plots.bar(shap_values_mapped, max_display=16, show=False)
             fig_bar = plt.gcf()
             st.pyplot(fig_bar)
 
@@ -265,7 +322,9 @@ with tab2:
         # Beeswarm Plot (Males)
         with _lock:
             plt.figure(figsize=(10, 6))
-            shap.plots.beeswarm(explanation_male, max_display=16, show=False)
+            # 应用特征名称映射
+            shap_values_mapped = apply_feature_name_mapping(explanation_male)
+            shap.plots.beeswarm(shap_values_mapped, max_display=16, show=False)
             fig_beeswarm = plt.gcf()
             st.pyplot(fig_beeswarm)
 

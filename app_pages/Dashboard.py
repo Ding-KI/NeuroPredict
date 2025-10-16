@@ -13,6 +13,27 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+# 特征名称映射表 - 将技术名称转换为可读名称
+FEATURE_NAME_MAPPING = {
+    'APQ_P_APQ_P_CP': 'Parenting Corporal Punishment',
+    'APQ_P_APQ_P_ID': 'Parenting Inconsistent Discipline', 
+    'APQ_P_APQ_P_INV': 'Parenting Involvement',
+    'APQ_P_APQ_P_OPD': 'Parenting Other Discipline Practices',
+    'APQ_P_APQ_P_PM': 'Parenting Poor Monitoring',
+    'APQ_P_APQ_P_PP': 'Parenting Positive Parenting',
+    'SDQ_SDQ_Conduct_Problems': 'Conduct Problems',
+    'SDQ_SDQ_Difficulties_Total': 'Total Difficulties',
+    'SDQ_SDQ_Emotional_Problems': 'Emotional Problems',
+    'SDQ_SDQ_Externalizing': 'Externalizing Behavior',
+    'SDQ_SDQ_Generating_Impact': 'Impact on Child',
+    'SDQ_SDQ_Hyperactivity': 'Hyperactivity',
+    'SDQ_SDQ_Internalizing': 'Internalizing Behavior',
+    'SDQ_SDQ_Peer_Problems': 'Peer Problems',
+    'SDQ_SDQ_Prosocial': 'Prosocial Behavior',
+    'SDQ_SDQ_Prosocial_Behavior': 'Prosocial Behavior',
+    'Sex_F': 'Gender (Female)'
+}
+
 # 自定义CSS样式
 st.markdown("""
 <style>
@@ -409,6 +430,10 @@ def main():
             st.subheader("SDQ Scores Analysis")
 
             sdq_data = data[sdq_columns].mean()
+            
+            # 应用特征名称映射
+            sdq_readable_names = [FEATURE_NAME_MAPPING.get(col, col) for col in sdq_data.index]
+            sdq_data.index = sdq_readable_names
 
             fig_sdq = px.bar(
                 x=sdq_data.index.tolist(),

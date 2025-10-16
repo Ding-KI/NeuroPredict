@@ -15,6 +15,38 @@ from datetime import datetime, timedelta
 
 warnings.filterwarnings("ignore")
 
+# 特征名称映射表 - 将技术名称转换为可读名称
+FEATURE_NAME_MAPPING = {
+    'APQ_P_APQ_P_CP': 'Parenting Corporal Punishment',
+    'APQ_P_APQ_P_ID': 'Parenting Inconsistent Discipline', 
+    'APQ_P_APQ_P_INV': 'Parenting Involvement',
+    'APQ_P_APQ_P_OPD': 'Parenting Other Discipline Practices',
+    'APQ_P_APQ_P_PM': 'Parenting Poor Monitoring',
+    'APQ_P_APQ_P_PP': 'Parenting Positive Parenting',
+    'SDQ_SDQ_Conduct_Problems': 'Conduct Problems',
+    'SDQ_SDQ_Difficulties_Total': 'Total Difficulties',
+    'SDQ_SDQ_Emotional_Problems': 'Emotional Problems',
+    'SDQ_SDQ_Externalizing': 'Externalizing Behavior',
+    'SDQ_SDQ_Generating_Impact': 'Impact on Child',
+    'SDQ_SDQ_Hyperactivity': 'Hyperactivity',
+    'SDQ_SDQ_Internalizing': 'Internalizing Behavior',
+    'SDQ_SDQ_Peer_Problems': 'Peer Problems',
+    'SDQ_SDQ_Prosocial': 'Prosocial Behavior',
+    'Sex_F': 'Gender (Female)',
+    # 新增的合成变量映射
+    'SDQ_Total_Difficulties': 'Total Difficulties',
+    'SDQ_Externalizing': 'Externalizing Behavior',
+    'SDQ_Internalizing': 'Internalizing Behavior'
+}
+
+def map_feature_names(df, feature_column='Feature'):
+    """
+    将DataFrame中的特征名称映射为可读名称
+    """
+    df_copy = df.copy()
+    df_copy[feature_column] = df_copy[feature_column].map(FEATURE_NAME_MAPPING).fillna(df_copy[feature_column])
+    return df_copy
+
 # 自定义CSS样式
 st.markdown("""
 <style>
@@ -292,11 +324,14 @@ def main():
                 if importance_results is not None:
                     # 显示前10个最重要的特征
                     top_features = importance_results.head(10)
+                    
+                    # 应用特征名称映射
+                    top_features_mapped = map_feature_names(top_features)
 
                     st.markdown("##### Top 10 Most Important Features")
                         # F-score可视化
                     fig_fscore = px.bar(
-                            top_features,
+                            top_features_mapped,
                             x='F_Score',
                             y='Feature',
                             orientation='h',
@@ -323,8 +358,11 @@ def main():
                                 st.markdown(f"##### {category}")
 
                                 if len(category_results) > 1:
+                                    # 应用特征名称映射
+                                    category_results_mapped = map_feature_names(category_results)
+                                    
                                     fig_category = px.bar(
-                                        category_results,
+                                        category_results_mapped,
                                         x='F_Score',
                                         y='Feature',
                                         orientation='h',
@@ -362,10 +400,18 @@ def main():
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    selected_sdq = st.selectbox("Select SDQ Variable:", sdq_vars)
+                    # SDQ选择器 - 使用可读名称
+                    sdq_readable_names = [FEATURE_NAME_MAPPING.get(var, var) for var in sdq_vars]
+                    sdq_var_mapping = dict(zip(sdq_readable_names, sdq_vars))
+                    selected_sdq_readable = st.selectbox("Select SDQ Variable:", sdq_readable_names)
+                    selected_sdq = sdq_var_mapping[selected_sdq_readable]
 
                 with col2:
-                    selected_apq = st.selectbox("Select APQ Variable:", apq_vars)
+                    # APQ选择器 - 使用可读名称
+                    apq_readable_names = [FEATURE_NAME_MAPPING.get(var, var) for var in apq_vars]
+                    apq_var_mapping = dict(zip(apq_readable_names, apq_vars))
+                    selected_apq_readable = st.selectbox("Select APQ Variable:", apq_readable_names)
+                    selected_apq = apq_var_mapping[selected_apq_readable]
 
                 if selected_sdq and selected_apq:
                     # 散点图分析
@@ -376,9 +422,13 @@ def main():
                         x=selected_apq,
                         y=selected_sdq,
                         color='Gender',
-                        title=f'{selected_sdq} vs {selected_apq} - Relationship by Gender',
+                        title=f'{selected_sdq_readable} vs {selected_apq_readable} - Relationship by Gender',
                         trendline='ols',
-                        color_discrete_map={'Male': '#2ecc71', 'Female': '#9b59b6'}
+                        color_discrete_map={'Male': '#2ecc71', 'Female': '#9b59b6'},
+                        labels={
+                            selected_apq: selected_apq_readable,
+                            selected_sdq: selected_sdq_readable
+                        }
                     )
                     fig_scatter.update_layout(height=500)
                     st.plotly_chart(fig_scatter, use_container_width=True)
