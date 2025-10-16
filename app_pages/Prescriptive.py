@@ -207,13 +207,11 @@ with tab1:
     st.header("Explain a Single Prediction")
     st.markdown("Select a sample from the test set using the slider to see how the model made its prediction.")
 
-    sample_index = st.slider("Select a sample index:", 0, len(X_test) - 1, 5)
-
-    st.subheader(f"Features for Sample #{sample_index}")
+    sample_index = st.slider( " ", 0, len(X_test) - 1, 5)
     # 创建带有可读列名的DataFrame
     sample_data = X_test.iloc[[sample_index]].copy()
     sample_data.columns = [FEATURE_NAME_MAPPING.get(col, col) for col in sample_data.columns]
-    st.dataframe(sample_data, use_container_width=True)
+    st.dataframe(sample_data, width='stretch')
     
     # Force Plot 
     st.subheader("SHAP Force Plot")
@@ -221,7 +219,8 @@ with tab1:
     
     # We use the raw explainer object and the specific sample's SHAP values
     with _lock:
-        plt.figure(figsize=(10, 6))
+        # 创建更大的图形以容纳更多文本
+        plt.figure(figsize=(14, 8))
         
         # 创建SHAP force plot，并设置数值精度和特征名称映射
         shap_values_rounded = shap_values_class_1[sample_index]
@@ -231,8 +230,23 @@ with tab1:
         # 应用特征名称映射
         shap_values_mapped = apply_feature_name_mapping(shap_values_rounded)
         
-        shap.plots.force(shap_values_mapped, matplotlib=True)
+        # 使用自定义参数来改善文本显示
+        shap.plots.force(shap_values_mapped, matplotlib=True, 
+                        text_rotation=0, 
+                        show=False)
+        
+        # 获取当前图形并调整布局
         fig = plt.gcf()
+        
+        # 调整子图参数以提供更多空间给文本
+        plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.15)
+        
+        # 调整字体大小
+        for ax in fig.get_axes():
+            for text in ax.texts:
+                if text.get_fontsize() > 8:  # 只调整较大的字体
+                    text.set_fontsize(9.5)
+        
         st.pyplot(fig)
 
     # Waterfall Plot

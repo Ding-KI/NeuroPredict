@@ -158,38 +158,49 @@ def main():
     """
     This function defines the Streamlit page for the ADHD prediction dashboard.
     """
-    st.title("ADHD Outcome Prediction Questionnaire")
-    st.markdown("""
-    Please answer the following questions based on your observations. Your responses will be used to predict an outcome using a machine learning model.
-    **Disclaimer:** This is a tool for preliminary assessment and is **not** a substitute for a professional medical diagnosis.
-    """)
+    # Smaller main title
+    st.markdown(
+        """
+        <h2 style='margin-bottom: 0.5rem;'>ADHD Outcome Prediction Questionnaire</h2>
+        <p style='color:#555; font-size:0.95rem;'>Please answer the following questions based on your observations. Your responses will be used to predict an outcome using a machine learning model.</p>
+        <p style='color:#888; font-size:0.9rem;'><strong>Disclaimer:</strong> This is a tool for preliminary assessment and is <strong>not</strong> a substitute for a professional medical diagnosis.</p>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # Load the model
     model = load_model('model/best_model_Decision_Tree_Depth=3.joblib')
 
     # Use a form to collect all inputs and submit them at once
     with st.form("prediction_form"):
-            st.header("Parenting Questionnaire (APQ)")
-            apq_responses = {}
-            for key, question in apq_questions.items():
-                full_label = f"**{key}**\n\n{question}"
-                response = st.radio(full_label, options=list(apq_options.keys()), horizontal=True, key=key)
-                apq_responses[key] = response
-            st.markdown("---")
+            col_left, col_right = st.columns(2)
 
-            st.header("Strengths and Difficulties Questionnaire (SDQ)")
-            sdq_responses = {}
-            for key, question in sdq_questions.items():
-                full_label = f"**{key}**\n\n{question}"
-                response = st.radio(full_label, options=list(sdq_options.keys()), horizontal=True, key=key)
-                sdq_responses[key] = response
+            # Left column: APQ + Gender
+            with col_left:
+                st.markdown("<h4 style='margin-top:0;'>Parenting Questionnaire (APQ)</h4>", unsafe_allow_html=True)
+                apq_responses = {}
+                for key, question in apq_questions.items():
+                    full_label = f"**{key}**\n\n{question}"
+                    response = st.radio(full_label, options=list(apq_options.keys()), horizontal=True, key=key)
+                    apq_responses[key] = response
 
-            st.header("Gender")
-            gender_response = st.radio(
-                   "**1. Please select the gender:**",
-                   options=list(gender_options.keys()),
-                   horizontal=True,
-                   key="gender") 
+                # Gender under APQ to save space
+                st.markdown("<h5 style='margin-top:1rem;'>Gender</h5>", unsafe_allow_html=True)
+                gender_response = st.radio(
+                       "**Please select the gender:**",
+                       options=list(gender_options.keys()),
+                       horizontal=True,
+                       key="gender")
+
+            # Right column: SDQ
+            with col_right:
+                st.markdown("<h4 style='margin-top:0;'>Strengths and Difficulties Questionnaire (SDQ)</h4>", unsafe_allow_html=True)
+                sdq_responses = {}
+                for key, question in sdq_questions.items():
+                    full_label = f"**{key}**\n\n{question}"
+                    response = st.radio(full_label, options=list(sdq_options.keys()), horizontal=True, key=key)
+                    sdq_responses[key] = response
+
             submitted = st.form_submit_button("Submit and Predict Outcome")
         
     if submitted:
