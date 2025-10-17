@@ -123,7 +123,7 @@ with st.sidebar:
         if st.button(
                 page,
                 key=f"nav_{page}",
-                width='stretch',
+                use_container_width=True,
                 type=button_type
         ):
             st.session_state.current_page = page
