@@ -40,7 +40,7 @@ _lock = threading.RLock()
 
 def apply_feature_name_mapping(shap_values, feature_names=None):
     """
-    应用特征名称映射，将技术名称转换为可读名称
+    应用特征名称映射,将技术名称转换为可读名称
     """
     if hasattr(shap_values, 'feature_names'):
         # 创建新的feature_names列表
@@ -162,6 +162,9 @@ def compute_shap_values():
     """
     Loads model and data, then computes the SHAP explainer and values.
     """
+    # 初始化所有变量为 None,防止 UnboundLocalError
+    X, y, model, df, X_test, explainer, shap_values = None, None, None, None, None, None, None
+    
     try:
         model = joblib.load('model/best_model_Decision_Tree_Depth=3.joblib')
         df = pd.read_csv('data/processed_data/df_preprocessed.csv')
@@ -173,19 +176,35 @@ def compute_shap_values():
 
         X = df.drop(columns=[ADHD_Outcome])
         y = df[ADHD_Outcome]
+
+        # 在分割数据前,将所有特征列强制转换为 float,防止 TypeError
+        try:
+            X = X.astype(float)
+        except ValueError as e:
+            st.error(f"Error converting feature data to numeric: {e}. Please check 'df_preprocessed.csv' for non-numeric values (like text) in your feature columns.")
+            return None, None, None, None
+        
+        # 现在 X 保证是数字类型
         _, X_test, _, _ = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-        # Create the SHAP explainer
+        # 创建 SHAP 解释器
         explainer = shap.TreeExplainer(model)
-        # Compute SHAP values for the test set
-        shap_values = explainer(X_test) 
+        # 计算 SHAP 值
+        shap_values = explainer(X_test)
+        
+        # 打印SHAP值的形状以便调试
+        st.write(f"Debug: SHAP values shape: {shap_values.values.shape}")
+        
         return model, X_test, explainer, shap_values
 
     except FileNotFoundError as e:
-        st.error(f"Error loading files: {e}. Make sure 'model.joblib' and 'dataset.csv' are in the same directory as 'app.py'.")
+        st.error(f"Error loading files: {e}. Make sure 'model/best_model_Decision_Tree_Depth=3.joblib' and 'data/processed_data/df_preprocessed.csv' exist.")
         return None, None, None, None
     except Exception as e:
+        # 捕捉其他所有意外错误
         st.error(f"An error occurred during computation: {e}")
+        import traceback
+        st.error(traceback.format_exc())
         return None, None, None, None
 
 with st.spinner('Loading model and computing SHAP values... This may take a moment.'):
@@ -194,12 +213,49 @@ with st.spinner('Loading model and computing SHAP values... This may take a mome
 if model is None:
     st.stop()
 
-shap_values_class_1 = shap_values[:,:,1]
-# Identify indices for female and male samples
-female_indices = X_test['Sex_F'] == 1
-male_indices = X_test['Sex_F'] == 0
-explanation_female = shap_values_class_1[female_indices.values]
-explanation_male = shap_values_class_1[male_indices.values]
+# 修复：正确处理SHAP值
+# 对于二分类问题，SHAP值可能是2D或3D数组
+try:
+    if len(shap_values.values.shape) == 3:
+        # 如果是3D数组 (n_samples, n_features, n_classes)
+        shap_values_class_1 = shap.Explanation(
+            values=shap_values.values[:, :, 1],
+            base_values=shap_values.base_values[:, 1] if len(shap_values.base_values.shape) > 1 else shap_values.base_values,
+            data=shap_values.data,
+            feature_names=shap_values.feature_names
+        )
+    else:
+        # 如果是2D数组 (n_samples, n_features) - 直接使用
+        shap_values_class_1 = shap_values
+except Exception as e:
+    st.error(f"Error processing SHAP values: {e}")
+    st.stop()
+
+# 修复：正确识别性别索引
+try:
+    # 使用.values来获取numpy数组，然后转换为布尔索引
+    female_mask = (X_test['Sex_F'].values == 1)
+    male_mask = (X_test['Sex_F'].values == 0)
+    
+    # 使用numpy的布尔索引
+    explanation_female = shap.Explanation(
+        values=shap_values_class_1.values[female_mask],
+        base_values=shap_values_class_1.base_values[female_mask] if hasattr(shap_values_class_1.base_values, '__len__') else shap_values_class_1.base_values,
+        data=shap_values_class_1.data[female_mask],
+        feature_names=shap_values_class_1.feature_names
+    )
+    
+    explanation_male = shap.Explanation(
+        values=shap_values_class_1.values[male_mask],
+        base_values=shap_values_class_1.base_values[male_mask] if hasattr(shap_values_class_1.base_values, '__len__') else shap_values_class_1.base_values,
+        data=shap_values_class_1.data[male_mask],
+        feature_names=shap_values_class_1.feature_names
+    )
+except Exception as e:
+    st.error(f"Error creating gender-specific explanations: {e}")
+    import traceback
+    st.error(traceback.format_exc())
+    st.stop()
 
 tab1, tab2 = st.tabs(["Single Prediction Explanation", "Global Model Explanations"])
 
@@ -207,60 +263,72 @@ with tab1:
     st.header("Explain a Single Prediction")
     st.markdown("Select a sample from the test set using the slider to see how the model made its prediction.")
 
-    sample_index = st.slider( " ", 0, len(X_test) - 1, 5)
+    sample_index = st.slider(" ", 0, len(X_test) - 1, 5)
     # 创建带有可读列名的DataFrame
     sample_data = X_test.iloc[[sample_index]].copy()
     sample_data.columns = [FEATURE_NAME_MAPPING.get(col, col) for col in sample_data.columns]
-    st.dataframe(sample_data, width='stretch')
+    st.dataframe(sample_data, use_container_width=True)
     
     # Force Plot 
     st.subheader("SHAP Force Plot")
     
     # We use the raw explainer object and the specific sample's SHAP values
     with _lock:
-        # 创建更大的图形以容纳更多文本
-        plt.figure(figsize=(14, 8))
-        
-        # 创建SHAP force plot，并设置数值精度和特征名称映射
-        shap_values_rounded = shap_values_class_1[sample_index]
-        shap_values_rounded.values = np.round(shap_values_rounded.values, 2)
-        shap_values_rounded.data = np.round(shap_values_rounded.data, 2)
-        
-        # 应用特征名称映射
-        shap_values_mapped = apply_feature_name_mapping(shap_values_rounded)
-        
-        # 使用自定义参数来改善文本显示，并将蓝色改为绿色
-        shap.plots.force(shap_values_mapped, matplotlib=True, 
-                        text_rotation=0, 
-                        show=False)
-        
-        # 获取当前图形并调整布局
-        fig = plt.gcf()
-        
-        # 调整子图参数以提供更多空间给文本
-        plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.15)
-        
-        # 将蓝色改为绿色
-        for ax in fig.get_axes():
-            # 修改文本颜色
-            for text in ax.texts:
-                if text.get_fontsize() > 8:  # 只调整较大的字体
-                    text.set_fontsize(9.5)
-                # 将蓝色文本改为绿色
-                if text.get_color() == '#1f77b4' or 'blue' in str(text.get_color()).lower():
-                    text.set_color('#1D5746')  # 使用主题绿色
+        try:
+            # 创建更大的图形以容纳更多文本
+            plt.figure(figsize=(14, 8))
             
-            # 修改图形元素颜色
-            for patch in ax.patches:
-                if patch.get_facecolor() == '#1f77b4' or 'blue' in str(patch.get_facecolor()).lower():
-                    patch.set_facecolor('#1D5746')  # 使用主题绿色
+            # 创建单个样本的SHAP值
+            sample_shap = shap.Explanation(
+                values=shap_values_class_1.values[sample_index],
+                base_values=shap_values_class_1.base_values[sample_index] if hasattr(shap_values_class_1.base_values, '__len__') else shap_values_class_1.base_values,
+                data=shap_values_class_1.data[sample_index],
+                feature_names=shap_values_class_1.feature_names
+            )
             
-            # 修改线条颜色
-            for line in ax.lines:
-                if line.get_color() == '#1f77b4' or 'blue' in str(line.get_color()).lower():
-                    line.set_color('#1D5746')  # 使用主题绿色
-        
-        st.pyplot(fig)
+            # 四舍五入数值
+            sample_shap.values = np.round(sample_shap.values, 2)
+            sample_shap.data = np.round(sample_shap.data, 2)
+            
+            # 应用特征名称映射
+            shap_values_mapped = apply_feature_name_mapping(sample_shap)
+            
+            # 使用自定义参数来改善文本显示,并将蓝色改为绿色
+            shap.plots.force(shap_values_mapped, matplotlib=True, 
+                            text_rotation=0, 
+                            show=False)
+            
+            # 获取当前图形并调整布局
+            fig = plt.gcf()
+            
+            # 调整子图参数以提供更多空间给文本
+            plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.15)
+            
+            # 将蓝色改为绿色
+            for ax in fig.get_axes():
+                # 修改文本颜色
+                for text in ax.texts:
+                    if text.get_fontsize() > 8:  # 只调整较大的字体
+                        text.set_fontsize(9.5)
+                    # 将蓝色文本改为绿色
+                    if text.get_color() == '#1f77b4' or 'blue' in str(text.get_color()).lower():
+                        text.set_color('#1D5746')  # 使用主题绿色
+                
+                # 修改图形元素颜色
+                for patch in ax.patches:
+                    if patch.get_facecolor() == '#1f77b4' or 'blue' in str(patch.get_facecolor()).lower():
+                        patch.set_facecolor('#1D5746')  # 使用主题绿色
+                
+                # 修改线条颜色
+                for line in ax.lines:
+                    if line.get_color() == '#1f77b4' or 'blue' in str(line.get_color()).lower():
+                        line.set_color('#1D5746')  # 使用主题绿色
+            
+            st.pyplot(fig)
+        except Exception as e:
+            st.error(f"Error creating force plot: {e}")
+            import traceback
+            st.error(traceback.format_exc())
 
     # Waterfall Plot
     st.subheader("SHAP Waterfall Plot")
@@ -269,12 +337,26 @@ with tab1:
     col1, col2, col3 = st.columns([1, 4, 1])
     with col2:
         with _lock:
-            plt.figure(figsize=(8, 6))
-            # 应用特征名称映射
-            shap_values_mapped = apply_feature_name_mapping(shap_values_class_1[sample_index])
-            shap.plots.waterfall(shap_values_mapped, max_display=16, show=False)
-            fig_waterfall = plt.gcf()
-            st.pyplot(fig_waterfall)
+            try:
+                plt.figure(figsize=(8, 6))
+                
+                # 创建单个样本的SHAP值
+                sample_shap = shap.Explanation(
+                    values=shap_values_class_1.values[sample_index],
+                    base_values=shap_values_class_1.base_values[sample_index] if hasattr(shap_values_class_1.base_values, '__len__') else shap_values_class_1.base_values,
+                    data=shap_values_class_1.data[sample_index],
+                    feature_names=shap_values_class_1.feature_names
+                )
+                
+                # 应用特征名称映射
+                shap_values_mapped = apply_feature_name_mapping(sample_shap)
+                shap.plots.waterfall(shap_values_mapped, max_display=16, show=False)
+                fig_waterfall = plt.gcf()
+                st.pyplot(fig_waterfall)
+            except Exception as e:
+                st.error(f"Error creating waterfall plot: {e}")
+                import traceback
+                st.error(traceback.format_exc())
 
 with tab2:
     st.header("Model Explanations")
@@ -286,47 +368,60 @@ with tab2:
         st.subheader("Overall Feature Importance")
 
         with _lock:
-            plt.figure(figsize=(10, 6))
-            # 应用特征名称映射
-            shap_values_mapped = apply_feature_name_mapping(shap_values_class_1)
-            shap.plots.bar(shap_values_mapped, max_display=16, show=False)
-            fig_bar = plt.gcf()
-            st.pyplot(fig_bar)
+            try:
+                plt.figure(figsize=(10, 6))
+                # 应用特征名称映射
+                shap_values_mapped = apply_feature_name_mapping(shap_values_class_1)
+                shap.plots.bar(shap_values_mapped, max_display=16, show=False)
+                fig_bar = plt.gcf()
+                st.pyplot(fig_bar)
+            except Exception as e:
+                st.error(f"Error creating bar plot: {e}")
+                
     with col2:
         # Beeswarm Plot
         st.subheader("SHAP Beeswarm Plot")
 
         with _lock:
-            plt.figure(figsize=(10, 6))
-            # 应用特征名称映射
-            shap_values_mapped = apply_feature_name_mapping(shap_values_class_1)
-            shap.plots.beeswarm(shap_values_mapped, max_display=16, show=False)
-            fig_beeswarm = plt.gcf()
-            st.pyplot(fig_beeswarm)
+            try:
+                plt.figure(figsize=(10, 6))
+                # 应用特征名称映射
+                shap_values_mapped = apply_feature_name_mapping(shap_values_class_1)
+                shap.plots.beeswarm(shap_values_mapped, max_display=16, show=False)
+                fig_beeswarm = plt.gcf()
+                st.pyplot(fig_beeswarm)
+            except Exception as e:
+                st.error(f"Error creating beeswarm plot: {e}")
 
-    st.markdown( "----")
+    st.markdown("----")
     st.subheader("In Females")
     col1, col2 = st.columns(2)
 
     with col1:
          # Bar Plot (Females)
         with _lock:
-            plt.figure(figsize=(10, 6))
-            # 应用特征名称映射
-            shap_values_mapped = apply_feature_name_mapping(explanation_female)
-            shap.plots.bar(shap_values_mapped, max_display=16, show=False)
-            fig_bar = plt.gcf()
-            st.pyplot(fig_bar)
+            try:
+                plt.figure(figsize=(10, 6))
+                # 应用特征名称映射
+                shap_values_mapped = apply_feature_name_mapping(explanation_female)
+                shap.plots.bar(shap_values_mapped, max_display=16, show=False)
+                fig_bar = plt.gcf()
+                st.pyplot(fig_bar)
+            except Exception as e:
+                st.error(f"Error creating female bar plot: {e}")
 
     with col2:
         # Beeswarm Plot (Females)
         with _lock:
-            plt.figure(figsize=(10, 6))
-            # 应用特征名称映射
-            shap_values_mapped = apply_feature_name_mapping(explanation_female)
-            shap.plots.beeswarm(shap_values_mapped, max_display=16, show=False)
-            fig_beeswarm = plt.gcf()
-            st.pyplot(fig_beeswarm)
+            try:
+                plt.figure(figsize=(10, 6))
+                # 应用特征名称映射
+                shap_values_mapped = apply_feature_name_mapping(explanation_female)
+                shap.plots.beeswarm(shap_values_mapped, max_display=16, show=False)
+                fig_beeswarm = plt.gcf()
+                st.pyplot(fig_beeswarm)
+            except Exception as e:
+                st.error(f"Error creating female beeswarm plot: {e}")
         
     st.subheader("In Males")
     col1, col2 = st.columns(2)
@@ -334,22 +429,28 @@ with tab2:
     with col1:
         # Bar Plot (Males)
         with _lock:
-            plt.figure(figsize=(10, 6))
-            # 应用特征名称映射
-            shap_values_mapped = apply_feature_name_mapping(explanation_male)
-            shap.plots.bar(shap_values_mapped, max_display=16, show=False)
-            fig_bar = plt.gcf()
-            st.pyplot(fig_bar)
+            try:
+                plt.figure(figsize=(10, 6))
+                # 应用特征名称映射
+                shap_values_mapped = apply_feature_name_mapping(explanation_male)
+                shap.plots.bar(shap_values_mapped, max_display=16, show=False)
+                fig_bar = plt.gcf()
+                st.pyplot(fig_bar)
+            except Exception as e:
+                st.error(f"Error creating male bar plot: {e}")
 
     with col2:
         # Beeswarm Plot (Males)
         with _lock:
-            plt.figure(figsize=(10, 6))
-            # 应用特征名称映射
-            shap_values_mapped = apply_feature_name_mapping(explanation_male)
-            shap.plots.beeswarm(shap_values_mapped, max_display=16, show=False)
-            fig_beeswarm = plt.gcf()
-            st.pyplot(fig_beeswarm)
+            try:
+                plt.figure(figsize=(10, 6))
+                # 应用特征名称映射
+                shap_values_mapped = apply_feature_name_mapping(explanation_male)
+                shap.plots.beeswarm(shap_values_mapped, max_display=16, show=False)
+                fig_beeswarm = plt.gcf()
+                st.pyplot(fig_beeswarm)
+            except Exception as e:
+                st.error(f"Error creating male beeswarm plot: {e}")
 
 st.markdown("----")
 st.markdown(
