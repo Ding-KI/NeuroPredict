@@ -39,6 +39,15 @@ FEATURE_NAME_MAPPING = {
     'SDQ_Internalizing': 'Internalizing Behavior'
 }
 
+APQ_DIMENSIONS = {
+            'APQ_P_APQ_P_CP': 'Corporal Punishment',
+            'APQ_P_APQ_P_ID': 'Inconsistent Discipline',
+            'APQ_P_APQ_P_INV': 'Parent Involvement',
+            'APQ_P_APQ_P_OPD': 'Other Discipline Practices',
+            'APQ_P_APQ_P_PM': 'Positive Monitoring',
+            'APQ_P_APQ_P_PP': 'Positive Parenting'
+        }
+
 def map_feature_names(df, feature_column='Feature'):
     """
     将DataFrame中的特征名称映射为可读名称
@@ -286,15 +295,74 @@ def perform_feature_importance_analysis(data, target_col, feature_cols):
 
     return results, X_clean
 
+def calculate_apq_corr_p_matrices(data, apq_dimensions):
+    vars_list = list(apq_dimensions.keys())
+    n = len(vars_list)
+    corr_matrix = np.zeros((n, n))
+    p_matrix = np.zeros((n, n))
+    
+    for i, var1 in enumerate(vars_list):
+        for j, var2 in enumerate(vars_list):
+            if i == j:
+                corr_matrix[i, j] = 1.0
+                p_matrix[i, j] = 0.0
+            else:
+                mask = ~(data[var1].isna() | data[var2].isna())
+                if mask.sum() > 2:  
+                    corr, p = stats.pearsonr(data[var1][mask], data[var2][mask])
+                    corr_matrix[i, j] = corr
+                    p_matrix[i, j] = p
+                else:
+                    corr_matrix[i, j] = np.nan 
+                    p_matrix[i, j] = np.nan
+            
+    return corr_matrix, p_matrix
+
+def create_apq_correlation_heatmap(corr_matrix, p_matrix, title, apq_dimensions):
+    labels = list(apq_dimensions.values())
+    
+    text_matrix = []
+    for i in range(len(corr_matrix)):
+        text_row = []
+        for j in range(len(corr_matrix)):
+            if i != j:
+                text = f"{corr_matrix[i,j]:.2f}<br>p={p_matrix[i,j]:.3f}"
+            else:
+                text = "1.00"
+            text_row.append(text)
+        text_matrix.append(text_row)
+    
+    
+    fig = go.Figure(data=go.Heatmap(
+        z=corr_matrix,
+        x=labels,
+        y=labels,
+        zmin=-1, zmax=1,
+        colorscale='RdBu', 
+        text=text_matrix,
+        texttemplate="%{text}",
+        textfont={"size": 10},
+        hoverongaps=False
+    ))
+    
+    fig.update_layout(
+        title=title,
+        width=800,
+        height=800,
+        xaxis_tickangle=-45
+    )
+    
+    return fig
 
 def main():
     # 加载数据
     data = load_data()
 
     # 创建标签页
-    tab1, tab2, = st.tabs([
+    tab1, tab2,tab3 = st.tabs([
         "Key Factors Analysis",
-        "SDQ-APQ Relationships"
+        "SDQ-APQ Relationships",
+        "APQ Correlation Heatmap"
     ])
 
     with tab1:
@@ -439,6 +507,75 @@ def main():
                     fig_scatter.update_layout(height=500)
                     st.plotly_chart(fig_scatter, use_container_width=True)
 
+    with tab3:
+        st.markdown("### APQ Correlation Heatmap")
+        st.markdown("How do different parenting practices (measured by APQ) correlate with each other, and do these correlations differ between ADHD and non-ADHD groups?")
+        st.markdown("#### Correlation Heatmaps by Group")
+        apq_vars_list = list(APQ_DIMENSIONS.keys())
+        if all(col in data.columns for col in apq_vars_list) and 'ADHD_Outcome' in data.columns:
+            
+            # --- 数据计算 ---
+            # @st.cache_data 似乎不适用于在st.tabs内部计算，因此我们直接计算
+            # 1. 总体
+            overall_corr, overall_p = calculate_apq_corr_p_matrices(data, APQ_DIMENSIONS)
+            
+            # 2. ADHD 组
+            adhd_data = data[data['ADHD_Outcome'] == 1]
+            adhd_corr, adhd_p = calculate_apq_corr_p_matrices(adhd_data, APQ_DIMENSIONS)
+            
+            # 3. Non-ADHD 组
+            non_adhd_data = data[data['ADHD_Outcome'] == 0]
+            non_adhd_corr, non_adhd_p = calculate_apq_corr_p_matrices(non_adhd_data, APQ_DIMENSIONS)
+
+            # --- 界面 ---
+            heatmap_choice = st.selectbox(
+                "Select group to view correlation heatmap:",
+                ("Overall Sample", "ADHD Group", "Non-ADHD Group")
+            )
+
+            if heatmap_choice == "Overall Sample":
+                fig = create_apq_correlation_heatmap(
+                    overall_corr, overall_p, 
+                    "APQ Correlations - Overall Sample", 
+                    APQ_DIMENSIONS
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            
+            elif heatmap_choice == "ADHD Group":
+                fig = create_apq_correlation_heatmap(
+                    adhd_corr, adhd_p, 
+                    "APQ Correlations - ADHD Group", 
+                    APQ_DIMENSIONS
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+            elif heatmap_choice == "Non-ADHD Group":
+                fig = create_apq_correlation_heatmap(
+                    non_adhd_corr, non_adhd_p, 
+                    "APQ Correlations - Non-ADHD Group", 
+                    APQ_DIMENSIONS
+                )
+                st.plotly_chart(fig, use_container_width=True)
+        
+        else:
+            st.warning("Required APQ (APQ_P_APQ_P_*) or ADHD_Outcome columns not found in the data.")
+
+        with st.expander("Show Key Findings Summary"):
+            st.markdown("""
+            **Overall Sample:**
+            - Disciplinary dimensions clustered together. Corporal punishment was positively correlated with inconsistent discipline ($r = 0.244, p < 0.001$) and other discipline practices ($r = 0.295, p < 0.001$).
+            - Inconsistent discipline also correlated positively with other discipline practices ($r = 0.284, p < 0.001$) and with positive monitoring ($r = 0.206, p < 0.001$), while showing a negative correlation with parent involvement ($r = -0.213, p < 0.001$).
+            - Parent involvement had a strong positive correlation with positive parenting ($r = 0.563, p < 0.001$) and a negative correlation with positive monitoring ($r = -0.211, p < 0.001$).
+
+            **Comparison between ADHD and Non-ADHD Groups:**
+            - The correlation between **corporal punishment and inconsistent discipline** was slightly stronger in the ADHD group ($r = 0.257$) than in the non-ADHD group ($r = 0.192$).
+            - Inconsistent discipline showed a **weaker negative association with parent involvement** in ADHD families ($r = -0.180$ vs. $r = -0.256$).
+            - Some correlations were weaker in ADHD households, including **inconsistent discipline with other discipline practices** ($r = 0.242$ vs. $r = 0.336$).
+            - Conversely, the correlation between **parent involvement and positive parenting** was stronger in the ADHD group ($r = 0.591$) than in non-ADHD participants ($r = 0.504$).
+
+            **Conclusion:**
+            Overall, ADHD participants exhibited stronger alignment between parent involvement and positive parenting, while clustering of negative disciplinary practices was slightly weaker than in non-ADHD participants.
+            """)
     # 页脚
     st.markdown(
         """
