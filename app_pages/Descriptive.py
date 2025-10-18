@@ -35,6 +35,36 @@ FEATURE_NAME_MAPPING = {
     'SDQ_Internalizing': 'Internalizing Behavior'
 }
 
+parent_vars = {
+    'Barratt_Barratt_P1_Edu': 'Parent 1 Education',
+    'Barratt_Barratt_P2_Edu': 'Parent 2 Education',
+    'Barratt_Barratt_P1_Occ': 'Parent 1 Occupation',
+    'Barratt_Barratt_P2_Occ': 'Parent 2 Occupation'
+}
+
+education_labels = {
+    3.0: 'Less than 7th grade',
+    6.0: 'Junior high school',
+    9.0: 'Partial high school',
+    12.0: 'High school graduate',
+    15.0: 'Partial college',
+    18.0: 'College education',
+    21.0: 'Graduate degree'
+}
+
+occupation_labels = {
+    0.0: 'Homemaker',
+    5.0: 'Day laborer',
+    10.0: 'Service worker',
+    15.0: 'Skilled worker',
+    20.0: 'Technical worker',
+    25.0: 'Skilled professional',
+    30.0: 'Supervisor/Manager',
+    35.0: 'Healthcare/Education',
+    40.0: 'Engineer/Teacher',
+    45.0: 'Executive/Professional'
+}
+
 # 自定义CSS样式
 st.markdown("""
 <style>
@@ -184,6 +214,10 @@ def load_data():
             'SDQ_SDQ_Conduct_Problems': np.random.poisson(2.07, n_samples),
             'SDQ_SDQ_Peer_Problems': np.random.poisson(2.15, n_samples),
             'SDQ_SDQ_Prosocial_Behavior': np.random.poisson(7.89, n_samples),
+            'Barratt_Barratt_P1_Edu': np.random.choice(list(education_labels.keys()), n_samples),
+            'Barratt_Barratt_P2_Edu': np.random.choice(list(education_labels.keys()), n_samples),
+            'Barratt_Barratt_P1_Occ': np.random.choice(list(occupation_labels.keys()), n_samples),
+            'Barratt_Barratt_P2_Occ': np.random.choice(list(occupation_labels.keys()), n_samples),
         })
 
         # 添加一些缺失值
@@ -225,21 +259,45 @@ def perform_chi_square_test(data, var1, var2):
     except:
         return None, None, None
 
+# function for tab5
+def _fmt_p(v):
+    """Safe p-value formatting to 4 decimals or 'NA'."""
+    if v is None:
+        return "NA"
+    try:
+        vv = float(v)
+        if np.isnan(vv):
+            return "NA"
+        return f"{vv:.4f}"
+    except Exception:
+        return "NA"
+
+def _cramers_v(chi2, n, r, c):
+    """Cramer's V effect size for chi-square test of independence."""
+    if n == 0:
+        return np.nan
+    k = min(r - 1, c - 1)
+    if k <= 0:
+        return np.nan
+    return np.sqrt(chi2 / (n * k))
+
 
 def main():
     # 加载数据
     data = load_data()
 
     # 创建标签页
-    tab1, tab2, tab3 = st.tabs([
+    tab1, tab2, tab3,tab4,tab5 = st.tabs([
         "Gender Distribution",
         "APQ Questionnaire",
         "SDQ Questionnaire",
+        "Distribution by Demographic",
+        "Parental Background"
     ])
 
     with tab1:
-        # Question 1: Demographics Distribution
-        st.markdown("### Distribution of Participants by Key Demographics")
+        # Question 2: Gender-ADHD Status Distribution
+        st.markdown("### Gender-ADHD Status Distribution")
 
         if 'Gender' in data.columns and 'ADHD_Status' in data.columns:
             # 交叉表
@@ -278,6 +336,46 @@ def main():
                     legend_title="ADHD Status"
                 )
             st.plotly_chart(fig_crosstab, use_container_width=True)
+        
+        st.markdown("### ADHD Diagnosis by Gender (Total N = 1213)")
+        st.markdown("This section displays the statistical relationship between gender and ADHD diagnosis.")
+
+        st.markdown("#### 1) Contingency Table (Counts)")
+        # Create a dataframe for the contingency table
+        count_data = {
+            '': ['Male', 'Female'],
+            'Non-ADHD': [216, 166],
+            'ADHD': [581, 250]
+        }
+        df_count = pd.DataFrame(count_data).set_index('')
+        st.dataframe(df_count)
+
+        st.markdown("#### 2) Row-wise Percentages (% within gender)")
+        # Create a dataframe for the percentage table
+        percent_data = {
+            '': ['Male', 'Female'],
+            'Non-ADHD': ['27.1%', '39.9%'],
+            'ADHD': ['72.9%', '60.1%']
+        }
+        df_percent = pd.DataFrame(percent_data).set_index('')
+        st.dataframe(df_percent)
+
+        st.markdown("#### 3) Breakdown by Gender")
+        st.markdown("- **Male:** Non-ADHD: 216 (27.1%), ADHD: 581 (72.9%)")
+        st.markdown("- **Female:** Non-ADHD: 166 (39.9%), ADHD: 250 (60.1%)")
+
+        st.markdown("#### 4) Statistical Test Results (Chi-square test of independence)")
+        st.markdown("- **Chi-square ($\chi^2$):** 20.18")
+        st.markdown("- **p-value:** 7.07e-06")
+
+        st.markdown("#### 5) Conclusion")
+        st.markdown(
+            """
+            - There is a statistically significant association between gender and ADHD diagnosis (p < 0.001).
+            - The association strength is small (based on Cramer's V).
+            - A higher percentage of males in the sample were diagnosed with ADHD (72.9%) compared to females (60.1%).
+            """
+        )
 
     with tab2:
         # Question 3: APQ Questionnaire Distribution
@@ -344,6 +442,212 @@ def main():
                             marginal='box'
                         )
                         st.plotly_chart(fig_density, use_container_width=True)
+
+    with tab4:
+        st.markdown("### Distribution by Key Demographics")
+        st.markdown(
+            "What is the distribution of participants by key demographics (e.g., study site, ethnicity, race, sex)?")
+        st.info("Note: Gender distribution is available in the 'Gender Distribution' tab.")
+
+        # --- Study Site ---
+        st.markdown("#### Distribution by Study Site (N=1213)")
+        # Data provided by the user
+        data_site = {
+            'Category': ['Staten Island', 'Midtown', 'Harlem', 'MRV'],
+            'Count': [652, 430, 120, 11]
+        }
+        df_site = pd.DataFrame(data_site).sort_values('Count', ascending=False)
+
+        # Plot 1: Study Site
+        fig_site = px.bar(
+            df_site,
+            x='Category',
+            y='Count',
+            title="Distribution by Study Site",
+            color='Category',
+            text_auto=True  # Show counts on bars
+        )
+        fig_site.update_layout(xaxis_title="Study Site", yaxis_title="Count", showlegend=False)
+        st.plotly_chart(fig_site, use_container_width=True)
+
+        # --- Ethnicity ---
+        st.markdown("#### Distribution by Ethnicity (N=1213)")
+        # Data provided by the user
+        data_ethnicity = {
+            'Category': ['Not Hispanic or Latino', 'Hispanic or Latino', 'Decline to specify', 'nan', 'Unknown'],
+            'Count': [777, 296, 77, 43, 20]
+        }
+        df_ethnicity = pd.DataFrame(data_ethnicity).sort_values('Count', ascending=False)
+        # Rename 'nan' for better chart readability
+        df_ethnicity['Category'] = df_ethnicity['Category'].replace({'nan': 'Missing/Not Specified'})
+
+        # Plot 2: Ethnicity
+        fig_ethnicity = px.bar(
+            df_ethnicity,
+            x='Category',
+            y='Count',
+            title="Distribution by Ethnicity",
+            color='Category',
+            text_auto=True
+        )
+        fig_ethnicity.update_layout(xaxis_title="Ethnicity", yaxis_title="Count", showlegend=False)
+        st.plotly_chart(fig_ethnicity, use_container_width=True)
+
+        # --- Race ---
+        st.markdown("#### Distribution by Race (N=1213)")
+        st.markdown("_Note: Shows the top 4 reported categories as provided._")
+        # Data provided by the user
+        data_race = {
+            'Category': ['White/Caucasian', 'Two or more races', 'Black/African American', 'Hispanic'],
+            'Count': [573, 195, 181, 128]
+        }
+        df_race = pd.DataFrame(data_race).sort_values('Count', ascending=False)
+
+        # Plot 3: Race
+        fig_race = px.bar(
+            df_race,
+            x='Category',
+            y='Count',
+            title="Distribution by Race (Top 4 Categories)",
+            color='Category',
+            text_auto=True
+        )
+        fig_race.update_layout(xaxis_title="Race", yaxis_title="Count", showlegend=False)
+        st.plotly_chart(fig_race, use_container_width=True)
+
+
+    with tab5:
+        st.markdown("### Parental Education & Occupation Distribution")
+        st.markdown("How are parents' education level and occupational status distributed among children with ADHD and those without ADHD?")
+
+        # 检查所需列是否存在
+        if 'ADHD_Status' not in data.columns or not any(col in data.columns for col in parent_vars.keys()):
+            st.warning("Required 'ADHD_Status' or 'Barratt_*' columns not found in the data. Cannot perform this analysis.")
+        else:
+            df = data.copy()
+            statuses = ['Non-ADHD', 'ADHD']
+
+            # 创建选择框
+            selected_var_title = st.selectbox(
+                "Select Parental Variable to Analyze:",
+                options=list(parent_vars.values())
+            )
+
+            # 获取所选变量的键和标题
+            var = [k for k, v in parent_vars.items() if v == selected_var_title][0]
+            title = selected_var_title
+
+            # 选择标签映射
+            label_map = education_labels if 'Edu' in var else occupation_labels
+            ordered_keys = list(label_map.keys())
+            ordered_labels = [label_map[k] for k in ordered_keys]
+
+            # --- 开始分析逻辑 ---
+            sub = df[['ADHD_Status', var]].dropna().copy()
+            if sub.empty:
+                st.warning(f"No valid (non-missing) data found for {title} ({var}).")
+            else:
+                # 计算计数和百分比
+                counts = {}
+                percents = {}
+                for status in statuses:
+                    vals = sub.loc[sub['ADHD_Status'] == status, var].astype(float)
+                    vc = vals.value_counts().sort_index()
+                    counts[status] = np.array([vc.get(k, 0) for k in ordered_keys], dtype=int)
+                    denom = counts[status].sum()
+                    percents[status] = np.round((counts[status] / denom * 100.0), 2) if denom > 0 else np.zeros_like(counts[status], dtype=float)
+
+                
+                fig = go.Figure()
+                for status, color in zip(statuses, ['#3498db', '#e74c3c']): # 使用之前定义的颜色
+                    fig.add_trace(
+                        go.Bar(
+                            name=status,
+                            x=ordered_labels,
+                            y=counts[status],
+                            text=[f"{p:.1f}%" for p in percents[status]],
+                            textposition='outside', 
+                            marker_color=color
+                        )
+                    )
+                fig.update_layout(
+                    height=500,
+                    title_text=f"{title} Distribution by ADHD Status",
+                    barmode='group',
+                    showlegend=True,
+                    xaxis_title="Category",
+                    yaxis_title="Count",
+                    legend_title="ADHD Status"
+                )
+                fig.update_xaxes(tickangle=-45)
+                st.plotly_chart(fig, use_container_width=True)
+
+                
+                st.markdown(f"#### Analysis Details for {title}")
+
+                cols = st.columns(2)
+                for i, status in enumerate(statuses):
+                    with cols[i]:
+                        st.markdown(f"**{status} Group**")
+                        total_n = int(counts[status].sum())
+                        st.metric(label="Sample Size (Non-Missing)", value=total_n)
+
+                        if total_n > 0:
+                            mode_idx = int(np.argmax(counts[status]))
+                            mode_code = ordered_keys[mode_idx]
+                            mode_label = label_map.get(mode_code, 'Unknown')
+
+                            vals = sub.loc[sub['ADHD_Status'] == status, var].astype(float).values
+                            med_code = float(np.median(vals))
+                            med_label = label_map.get(med_code, 'Unknown')
+
+                            st.markdown(f"**Most Common:** {mode_label}")
+                            st.markdown(f"**Median Level:** {med_label}")
+                        else:
+                            st.markdown("**Most Common:** N/A")
+                            st.markdown("**Median Level:** N/A")
+
+                
+                st.markdown("#### Statistical Test")
+                contingency = np.vstack([counts['Non-ADHD'], counts['ADHD']])
+                
+                
+                valid_cols = contingency.sum(axis=0) > 0
+                contingency_filtered = contingency[:, valid_cols]
+                
+                if contingency_filtered.shape[0] < 2 or contingency_filtered.shape[1] < 2:
+                     st.warning("Cannot perform Chi-square test: not enough data or categories after filtering empty columns.")
+                else:
+                    try:
+                        chi2, p_value, dof, expected = stats.chi2_contingency(contingency_filtered)
+                        n_obs = contingency_filtered.sum()
+                        r, c = contingency_filtered.shape
+                        v = _cramers_v(chi2, n_obs, r, c)
+
+                        st.markdown("**Chi-square test of independence:**")
+                        st.markdown(f"- Chi-square ($\chi^2$) = {chi2:.3f}")
+                        st.markdown(f"- p-value = {_fmt_p(p_value)}")
+                        st.markdown(f"- Cramer's V = {v:.3f}")
+                        
+                        if p_value < 0.05:
+                            st.success(f"There is a statistically significant association between {title} and ADHD status (p = {_fmt_p(p_value)}).")
+                        else:
+                            st.info(f"There is no statistically significant association between {title} and ADHD status (p = {_fmt_p(p_value)}).")
+
+                    except Exception as e:
+                        st.error(f"Statistical test (Chi-square) could not be computed: {e}")
+
+                
+                with st.expander("Show Full Distribution Data (Counts & %):"):
+                    dist_data = {'Category': ordered_labels}
+                    for status in statuses:
+                        dist_data[f"{status} Count"] = counts[status]
+                        dist_data[f"{status} %"] = percents[status]
+
+                    df_dist = pd.DataFrame(dist_data).set_index('Category')
+                    st.dataframe(df_dist)
+
+    
 
     # 页脚
     st.markdown(
