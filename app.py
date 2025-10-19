@@ -1,7 +1,7 @@
 import streamlit as st
 import importlib.util
 
-# 设置页面配置
+
 st.set_page_config(
     page_title="NeuroPredict Dashboard",
     layout="wide",
@@ -10,7 +10,7 @@ st.set_page_config(
 
 
 def load_page(page_path):
-    """动态加载页面"""
+
     try:
         spec = importlib.util.spec_from_file_location("page", page_path)
         page_module = importlib.util.module_from_spec(spec)
@@ -23,15 +23,15 @@ def load_page(page_path):
         st.error(f"页面路径: {page_path}")
 
 
-# 自定义CSS样式
+
 st.markdown("""
 <style>
-    /* 侧边栏背景色 */
+
     [data-testid=stSidebar] {
         background-color: #1D5746;
     }
 
-    /* 侧边栏一般文字颜色（不包括按钮） */
+
     [data-testid=stSidebar] .css-1d391kg {
         color: white;
     }
@@ -46,7 +46,7 @@ st.markdown("""
         color: white;
     }
 
-    /* 非当前页面按钮样式 - 绿底白字 */
+
     [data-testid=stSidebar] .stButton > button[kind="secondary"] {
         width: 100%;
         padding: 0.8rem;
@@ -68,7 +68,7 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(45, 117, 86, 0.3);
     }
 
-    /* 当前页面按钮样式 - 白底绿字 */
+
     [data-testid=stSidebar] .stButton > button[kind="primary"] {
         width: 100%;
         padding: 0.8rem;
@@ -101,23 +101,22 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 侧边栏配置
+
 with st.sidebar:
-    # Logo在最顶部
+
     st.image("Neu.png", width=250)
 
-    # 导航标题
+
     st.markdown('<p class="nav-section-title">Navigation</p>', unsafe_allow_html=True)
 
-    # 初始化session state
+
     if 'current_page' not in st.session_state:
         st.session_state.current_page = "About"
 
-    # 创建导航按钮
+
     pages = ["About", "Descriptive", "Diagnostic", "Predictive", "Prescriptive"]
 
     for page in pages:
-        # 当前页面使用primary类型（白底绿字），其他页面使用secondary类型（绿底白字）
         button_type = "primary" if st.session_state.current_page == page else "secondary"
 
         if st.button(
@@ -131,7 +130,7 @@ with st.sidebar:
 
     st.markdown("---")
 
-# 页面映射
+
 page_files = {
     "About": "app_pages/Dashboard.py",
     "Descriptive": "app_pages/Descriptive.py",
@@ -140,6 +139,6 @@ page_files = {
     "Prescriptive": "app_pages/Prescriptive.py"
 }
 
-# 加载选中的页面
+
 current_file = page_files[st.session_state.current_page]
 load_page(current_file)

@@ -15,7 +15,6 @@ from datetime import datetime, timedelta
 
 warnings.filterwarnings("ignore")
 
-# 特征名称映射表 - 将技术名称转换为可读名称
 FEATURE_NAME_MAPPING = {
     'APQ_P_APQ_P_CP': 'Parenting Corporal Punishment',
     'APQ_P_APQ_P_ID': 'Parenting Inconsistent Discipline', 
@@ -33,7 +32,6 @@ FEATURE_NAME_MAPPING = {
     'SDQ_SDQ_Peer_Problems': 'Peer Problems',
     'SDQ_SDQ_Prosocial': 'Prosocial Behavior',
     'Sex_F': 'Gender (Female)',
-    # 新增的合成变量映射
     'SDQ_Total_Difficulties': 'Total Difficulties',
     'SDQ_Externalizing': 'Externalizing Behavior',
     'SDQ_Internalizing': 'Internalizing Behavior'
@@ -49,37 +47,28 @@ APQ_DIMENSIONS = {
         }
 
 def map_feature_names(df, feature_column='Feature'):
-    """
-    将DataFrame中的特征名称映射为可读名称
-    """
     df_copy = df.copy()
     df_copy[feature_column] = df_copy[feature_column].map(FEATURE_NAME_MAPPING).fillna(df_copy[feature_column])
     return df_copy
 
-# 自定义CSS样式
 st.markdown("""
 <style>
-/* 保持默认的绿色边框 */
 .stTabs [data-baseweb="tab-border"] {
     background-color: #1D5746 !important;
 }
 
-/* 选中的tab指示条改为红色 */
 .stTabs [data-baseweb="tab-highlight"] {
     background-color: #e74c3c !important;
 }
 
-/* 选中的tab文字改为红色 */
 .stTabs [aria-selected="true"] {
     color: #e74c3c !important;
 }
 
-/* 未选中的tab文字保持绿色 */
 .stTabs [data-baseweb="tab"] {
     color: #1D5746 !important;
 }
 
-/* 悬浮时变成红色 */
 .stTabs [data-baseweb="tab"]:hover {
     color: #e74c3c !important;
 }
@@ -165,12 +154,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# 数据加载函数
 @st.cache_data
 def load_data():
-    """加载数据"""
     try:
-        # 尝试加载真实数据
         df_cat = pd.read_excel('data/raw_data/TRAIN/TRAIN_CATEGORICAL_METADATA_new.xlsx')
         df_Q = pd.read_excel('data/raw_data/TRAIN/TRAIN_QUANTITATIVE_METADATA_new.xlsx')
         df_sol = pd.read_excel('data/raw_data/TRAIN/TRAINING_SOLUTIONS.xlsx')
@@ -178,16 +164,13 @@ def load_data():
         overall_df = df_cat.merge(df_Q, on="participant_id", how="inner").merge(df_sol, on="participant_id",
                                                                                 how="inner")
 
-        # 创建性别列
         if 'Sex_F' in overall_df.columns:
             overall_df['Gender'] = overall_df['Sex_F'].map({0: 'Male', 1: 'Female'})
 
-        # 创建ADHD状态列
         if 'ADHD_Outcome' in overall_df.columns:
             overall_df['ADHD_Status'] = overall_df['ADHD_Outcome'].map({0: 'Non-ADHD', 1: 'ADHD'})
 
     except Exception as e:
-        # 创建示例数据
         np.random.seed(42)
         n_samples = 1213
 
@@ -220,7 +203,6 @@ def load_data():
             'Barratt_Barratt_P2_Occ': np.random.normal(30.26, 13.90, n_samples),
         })
 
-        # 添加一些缺失值
         missing_indices = {
             'MRI_Track_Age_at_Scan': 360,
             'PreInt_Demos_Fam_Child_Ethnicity': 43,
@@ -235,7 +217,6 @@ def load_data():
                 indices = np.random.choice(overall_df.index, min(n_missing, len(overall_df)), replace=False)
                 overall_df.loc[indices, col] = np.nan
 
-        # 创建性别和ADHD状态列
         overall_df['Gender'] = overall_df['Sex_F'].map({0: 'Male', 1: 'Female'})
         overall_df['ADHD_Status'] = overall_df['ADHD_Outcome'].map({0: 'Non-ADHD', 1: 'ADHD'})
 
@@ -243,7 +224,6 @@ def load_data():
 
 
 def create_metric_card(title, value, delta=None):
-    """创建自定义指标卡片"""
     return f"""
     <div class="metric-card">
         <div class="metric-title">{title}</div>
@@ -253,7 +233,6 @@ def create_metric_card(title, value, delta=None):
 
 
 def calculate_correlation_matrix(data, variables, method='pearson'):
-    """计算相关性矩阵"""
     corr_data = data[variables].dropna()
     if method == 'pearson':
         corr_matrix = corr_data.corr(method='pearson')
@@ -263,12 +242,9 @@ def calculate_correlation_matrix(data, variables, method='pearson'):
 
 
 def perform_feature_importance_analysis(data, target_col, feature_cols):
-    """执行特征重要性分析"""
-    # 准备数据
     X = data[feature_cols].fillna(data[feature_cols].median())
     y = data[target_col]
 
-    # 移除缺失值
     mask = ~(X.isnull().any(axis=1) | y.isnull())
     X_clean = X[mask]
     y_clean = y[mask]
@@ -276,13 +252,10 @@ def perform_feature_importance_analysis(data, target_col, feature_cols):
     if len(X_clean) == 0:
         return None, None
 
-    # F-test特征选择
     f_scores, f_pvalues = f_classif(X_clean, y_clean)
 
-    # 互信息特征选择
     mi_scores = mutual_info_classif(X_clean, y_clean, random_state=42)
 
-    # 创建结果DataFrame
     results = pd.DataFrame({
         'Feature': feature_cols,
         'F_Score': f_scores,
@@ -290,7 +263,6 @@ def perform_feature_importance_analysis(data, target_col, feature_cols):
         'Mutual_Info': mi_scores
     })
 
-    # 排序
     results = results.sort_values('F_Score', ascending=False)
 
     return results, X_clean
@@ -355,10 +327,8 @@ def create_apq_correlation_heatmap(corr_matrix, p_matrix, title, apq_dimensions)
     return fig
 
 def main():
-    # 加载数据
     data = load_data()
 
-    # 创建标签页
     tab1, tab2,tab3 = st.tabs([
         "Key Factors Analysis",
         "SDQ-APQ Relationships",
@@ -372,7 +342,6 @@ def main():
         st.markdown(" * How strong are these associations?")
 
         if 'ADHD_Outcome' in data.columns:
-            # 定义分析变量
             behavioral_vars = [col for col in data.columns if col.startswith('SDQ_')]
             parenting_vars = [col for col in data.columns if col.startswith('APQ_')]
             demographic_vars = ['Sex_F', 'MRI_Track_Age_at_Scan', 'Basic_Demos_Study_Site',
@@ -380,24 +349,19 @@ def main():
             parent_edu_occ_vars = [col for col in data.columns if 'Barratt' in col]
 
             all_feature_vars = behavioral_vars + parenting_vars + demographic_vars + parent_edu_occ_vars
-            # 过滤存在的变量
             available_vars = [var for var in all_feature_vars if var in data.columns]
 
             if available_vars:
-                # 特征重要性分析
                 st.markdown("#### Feature Importance Analysis")
 
                 importance_results, X_clean = perform_feature_importance_analysis(data, 'ADHD_Outcome', available_vars)
 
                 if importance_results is not None:
-                    # 显示前10个最重要的特征
                     top_features = importance_results.head(10)
                     
-                    # 应用特征名称映射
                     top_features_mapped = map_feature_names(top_features)
 
                     st.markdown("##### Top 10 Most Important Features")
-                        # F-score可视化
                     fig_fscore = px.bar(
                             top_features_mapped,
                             x='F_Score',
@@ -408,12 +372,10 @@ def main():
                             color_continuous_scale='viridis',
                             labels={'F_Score': 'Importance', 'Feature': 'Feature Name'}
                         )
-                    # 使用与类别图表一致的高度计算
                     chart_height = max(400, 10 * 50)  # Top 10 特征使用固定间距
                     fig_fscore.update_layout(height=chart_height, yaxis={'categoryorder':'total ascending'})
                     st.plotly_chart(fig_fscore, use_container_width=True)
 
-                    # 按类别分析
                     st.markdown("#### Analysis by Category")
 
                     categories = {
@@ -428,7 +390,6 @@ def main():
                                 st.markdown(f"##### {category}")
 
                                 if len(category_results) > 1:
-                                    # 应用特征名称映射
                                     category_results_mapped = map_feature_names(category_results)
                                     
                                     fig_category = px.bar(
@@ -441,9 +402,7 @@ def main():
                                         color_continuous_scale='viridis',
                                         labels={'F_Score': 'Importance', 'Feature': 'Feature Name'}
                                     )
-                                    # 根据特征数量调整图表高度，APQ使用与SDQ相同的间距
                                     if category == 'Parenting (APQ)':
-                                        # APQ使用与SDQ相同的间距计算
                                         chart_height = max(400, 7 * 50)  # 使用SDQ的特征数量作为基准
                                     else:
                                         chart_height = max(300, len(category_results) * 50)
@@ -456,7 +415,6 @@ def main():
         st.markdown("* What is the relationship between SDQ subcategories (Externalizing, Internalizing, Total Difficulties) and APQ Parenting Practices?")
         st.markdown("* How does this relationship vary by gender?")
 
-        # 计算SDQ子量表
         if 'SDQ_SDQ_Emotional_Problems' in data.columns and 'SDQ_SDQ_Hyperactivity' in data.columns and 'SDQ_SDQ_Conduct_Problems' in data.columns and 'SDQ_SDQ_Peer_Problems' in data.columns:
             data['SDQ_Externalizing'] = data[['SDQ_SDQ_Hyperactivity', 'SDQ_SDQ_Conduct_Problems']].sum(axis=1)
             data['SDQ_Internalizing'] = data[['SDQ_SDQ_Emotional_Problems', 'SDQ_SDQ_Peer_Problems']].sum(axis=1)
@@ -470,25 +428,21 @@ def main():
             if sdq_vars and apq_vars and 'Gender' in data.columns:
                 st.markdown("#### SDQ-APQ Relationship Analysis")
 
-                # 选择要分析的变量
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    # SDQ选择器 - 使用可读名称
                     sdq_readable_names = [FEATURE_NAME_MAPPING.get(var, var) for var in sdq_vars]
                     sdq_var_mapping = dict(zip(sdq_readable_names, sdq_vars))
                     selected_sdq_readable = st.selectbox("Select SDQ Variable:", sdq_readable_names)
                     selected_sdq = sdq_var_mapping[selected_sdq_readable]
 
                 with col2:
-                    # APQ选择器 - 使用可读名称
                     apq_readable_names = [FEATURE_NAME_MAPPING.get(var, var) for var in apq_vars]
                     apq_var_mapping = dict(zip(apq_readable_names, apq_vars))
                     selected_apq_readable = st.selectbox("Select APQ Variable:", apq_readable_names)
                     selected_apq = apq_var_mapping[selected_apq_readable]
 
                 if selected_sdq and selected_apq:
-                    # 散点图分析
                     st.markdown("#### Scatter Plot Analysis by Gender")
 
                     fig_scatter = px.scatter(
@@ -514,20 +468,15 @@ def main():
         apq_vars_list = list(APQ_DIMENSIONS.keys())
         if all(col in data.columns for col in apq_vars_list) and 'ADHD_Outcome' in data.columns:
             
-            # --- 数据计算 ---
             # @st.cache_data 似乎不适用于在st.tabs内部计算，因此我们直接计算
-            # 1. 总体
             overall_corr, overall_p = calculate_apq_corr_p_matrices(data, APQ_DIMENSIONS)
             
-            # 2. ADHD 组
             adhd_data = data[data['ADHD_Outcome'] == 1]
             adhd_corr, adhd_p = calculate_apq_corr_p_matrices(adhd_data, APQ_DIMENSIONS)
             
-            # 3. Non-ADHD 组
             non_adhd_data = data[data['ADHD_Outcome'] == 0]
             non_adhd_corr, non_adhd_p = calculate_apq_corr_p_matrices(non_adhd_data, APQ_DIMENSIONS)
 
-            # --- 界面 ---
             heatmap_choice = st.selectbox(
                 "Select group to view correlation heatmap:",
                 ("Overall Sample", "ADHD Group", "Non-ADHD Group")
@@ -576,7 +525,6 @@ def main():
             **Conclusion:**
             Overall, ADHD participants exhibited stronger alignment between parent involvement and positive parenting, while clustering of negative disciplinary practices was slightly weaker than in non-ADHD participants.
             """)
-    # 页脚
     st.markdown(
         """
         <div style='text-align: center; color: #666; font-size: 0.9rem; padding: 2rem;'>

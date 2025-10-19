@@ -12,7 +12,6 @@ from datetime import datetime, timedelta
 
 warnings.filterwarnings("ignore")
 
-# 特征名称映射表 - 将技术名称转换为可读名称
 FEATURE_NAME_MAPPING = {
     'APQ_P_APQ_P_CP': 'Parenting Corporal Punishment',
     'APQ_P_APQ_P_ID': 'Parenting Inconsistent Discipline', 
@@ -65,30 +64,24 @@ occupation_labels = {
     45.0: 'Executive/Professional'
 }
 
-# 自定义CSS样式
 st.markdown("""
 <style>
-/* 保持默认的绿色边框 */
 .stTabs [data-baseweb="tab-border"] {
     background-color: #1D5746 !important;
 }
 
-/* 选中的tab指示条改为红色 */
 .stTabs [data-baseweb="tab-highlight"] {
     background-color: #e74c3c !important;
 }
 
-/* 选中的tab文字改为红色 */
 .stTabs [aria-selected="true"] {
     color: #e74c3c !important;
 }
 
-/* 未选中的tab文字保持绿色 */
 .stTabs [data-baseweb="tab"] {
     color: #1D5746 !important;
 }
 
-/* 悬浮时变成红色 */
 .stTabs [data-baseweb="tab"]:hover {
     color: #e74c3c !important;
 }
@@ -168,9 +161,7 @@ st.markdown("""
 
 @st.cache_data
 def load_data():
-    """加载数据"""
     try:
-        # 尝试加载真实数据
         df_cat = pd.read_excel('data/raw_data/TRAIN/TRAIN_CATEGORICAL_METADATA_new.xlsx')
         df_Q = pd.read_excel('data/raw_data/TRAIN/TRAIN_QUANTITATIVE_METADATA_new.xlsx')
         df_sol = pd.read_excel('data/raw_data/TRAIN/TRAINING_SOLUTIONS.xlsx')
@@ -178,16 +169,13 @@ def load_data():
         overall_df = df_cat.merge(df_Q, on="participant_id", how="inner").merge(df_sol, on="participant_id",
                                                                                 how="inner")
 
-        # 创建性别列
         if 'Sex_F' in overall_df.columns:
             overall_df['Gender'] = overall_df['Sex_F'].map({0: 'Male', 1: 'Female'})
 
-        # 创建ADHD状态列
         if 'ADHD_Outcome' in overall_df.columns:
             overall_df['ADHD_Status'] = overall_df['ADHD_Outcome'].map({0: 'Non-ADHD', 1: 'ADHD'})
 
     except Exception as e:
-        # 创建示例数据
         np.random.seed(42)
         n_samples = 1213
 
@@ -220,7 +208,6 @@ def load_data():
             'Barratt_Barratt_P2_Occ': np.random.choice(list(occupation_labels.keys()), n_samples),
         })
 
-        # 添加一些缺失值
         missing_indices = {
             'MRI_Track_Age_at_Scan': 360,
             'PreInt_Demos_Fam_Child_Ethnicity': 43,
@@ -233,7 +220,6 @@ def load_data():
                 indices = np.random.choice(overall_df.index, min(n_missing, len(overall_df)), replace=False)
                 overall_df.loc[indices, col] = np.nan
 
-        # 创建性别和ADHD状态列
         overall_df['Gender'] = overall_df['Sex_F'].map({0: 'Male', 1: 'Female'})
         overall_df['ADHD_Status'] = overall_df['ADHD_Outcome'].map({0: 'Non-ADHD', 1: 'ADHD'})
 
@@ -241,7 +227,6 @@ def load_data():
 
 
 def create_metric_card(title, value, delta=None):
-    """创建自定义指标卡片"""
     return f"""
     <div class="metric-card">
         <div class="metric-title">{title}</div>
@@ -251,7 +236,6 @@ def create_metric_card(title, value, delta=None):
 
 
 def perform_chi_square_test(data, var1, var2):
-    """执行卡方检验"""
     try:
         contingency_table = pd.crosstab(data[var1], data[var2])
         chi2, p_value, dof, expected = stats.chi2_contingency(contingency_table)
@@ -283,10 +267,8 @@ def _cramers_v(chi2, n, r, c):
 
 
 def main():
-    # 加载数据
     data = load_data()
 
-    # 创建标签页
     tab1, tab2, tab3,tab4,tab5 = st.tabs([
         "Gender Distribution",
         "APQ Questionnaire",
@@ -300,14 +282,12 @@ def main():
         st.markdown("### Gender-ADHD Status Distribution")
 
         if 'Gender' in data.columns and 'ADHD_Status' in data.columns:
-            # 交叉表
             gender_counts = data['Gender'].value_counts()
             crosstab = pd.crosstab(data['Gender'], data['ADHD_Status'], margins=True)
             crosstab_pct = pd.crosstab(data['Gender'], data['ADHD_Status'], normalize='index') * 100
         
         col1, col2 = st.columns(2)
         with col1:
-            # 性别柱状图
                 fig_gender = px.bar(
                     x=gender_counts.index,
                     y=gender_counts.values,
@@ -383,11 +363,9 @@ def main():
         st.markdown(
             "How are the scores on each dimension of the APQ questionnaire distributed across different genders and ADHD groups?")
 
-        # APQ变量
         apq_vars = [col for col in data.columns if col.startswith('APQ_P_APQ_P_')]
 
         if apq_vars and 'Gender' in data.columns and 'ADHD_Status' in data.columns:
-            # 选择APQ变量 - 使用可读名称
             apq_readable_names = [FEATURE_NAME_MAPPING.get(var, var) for var in apq_vars]
             apq_var_mapping = dict(zip(apq_readable_names, apq_vars))
             
@@ -411,11 +389,9 @@ def main():
         st.markdown(
             "What are the distribution characteristics of the Difficulties Total, Externalizing, and Internalizing scores in the SDQ questionnaire across different genders and ADHD diagnostic groups?")
 
-        # SDQ变量
         sdq_vars = [col for col in data.columns if col.startswith('SDQ_SDQ_')]
 
         if sdq_vars and 'Gender' in data.columns and 'ADHD_Status' in data.columns:
-            # 计算SDQ总分、外化问题和内化问题
             if 'SDQ_SDQ_Emotional_Problems' in data.columns and 'SDQ_SDQ_Hyperactivity' in data.columns and 'SDQ_SDQ_Conduct_Problems' in data.columns and 'SDQ_SDQ_Peer_Problems' in data.columns:
                 data['SDQ_Total_Difficulties'] = data[
                     ['SDQ_SDQ_Emotional_Problems', 'SDQ_SDQ_Hyperactivity', 'SDQ_SDQ_Conduct_Problems',
@@ -423,7 +399,6 @@ def main():
                 data['SDQ_Externalizing'] = data[['SDQ_SDQ_Hyperactivity', 'SDQ_SDQ_Conduct_Problems']].sum(axis=1)
                 data['SDQ_Internalizing'] = data[['SDQ_SDQ_Emotional_Problems', 'SDQ_SDQ_Peer_Problems']].sum(axis=1)
 
-                # 选择SDQ变量 - 使用可读名称
                 sdq_analysis_vars = ['SDQ_Total_Difficulties', 'SDQ_Externalizing', 'SDQ_Internalizing']
                 sdq_readable_names = [FEATURE_NAME_MAPPING.get(var, var) for var in sdq_analysis_vars]
                 sdq_var_mapping = dict(zip(sdq_readable_names, sdq_analysis_vars))
@@ -449,16 +424,13 @@ def main():
             "What is the distribution of participants by key demographics (e.g., study site, ethnicity, race, sex)?")
         st.info("Note: Gender distribution is available in the 'Gender Distribution' tab.")
 
-        # --- Study Site ---
         st.markdown("#### Distribution by Study Site (N=1213)")
-        # Data provided by the user
         data_site = {
             'Category': ['Staten Island', 'Midtown', 'Harlem', 'MRV'],
             'Count': [652, 430, 120, 11]
         }
         df_site = pd.DataFrame(data_site).sort_values('Count', ascending=False)
 
-        # Plot 1: Study Site
         fig_site = px.bar(
             df_site,
             x='Category',
@@ -470,18 +442,14 @@ def main():
         fig_site.update_layout(xaxis_title="Study Site", yaxis_title="Count", showlegend=False)
         st.plotly_chart(fig_site, use_container_width=True)
 
-        # --- Ethnicity ---
         st.markdown("#### Distribution by Ethnicity (N=1213)")
-        # Data provided by the user
         data_ethnicity = {
             'Category': ['Not Hispanic or Latino', 'Hispanic or Latino', 'Decline to specify', 'nan', 'Unknown'],
             'Count': [777, 296, 77, 43, 20]
         }
         df_ethnicity = pd.DataFrame(data_ethnicity).sort_values('Count', ascending=False)
-        # Rename 'nan' for better chart readability
         df_ethnicity['Category'] = df_ethnicity['Category'].replace({'nan': 'Missing/Not Specified'})
 
-        # Plot 2: Ethnicity
         fig_ethnicity = px.bar(
             df_ethnicity,
             x='Category',
@@ -493,17 +461,14 @@ def main():
         fig_ethnicity.update_layout(xaxis_title="Ethnicity", yaxis_title="Count", showlegend=False)
         st.plotly_chart(fig_ethnicity, use_container_width=True)
 
-        # --- Race ---
         st.markdown("#### Distribution by Race (N=1213)")
         st.markdown("_Note: Shows the top 4 reported categories as provided._")
-        # Data provided by the user
         data_race = {
             'Category': ['White/Caucasian', 'Two or more races', 'Black/African American', 'Hispanic'],
             'Count': [573, 195, 181, 128]
         }
         df_race = pd.DataFrame(data_race).sort_values('Count', ascending=False)
 
-        # Plot 3: Race
         fig_race = px.bar(
             df_race,
             x='Category',
@@ -520,34 +485,28 @@ def main():
         st.markdown("### Parental Education & Occupation Distribution")
         st.markdown("How are parents' education level and occupational status distributed among children with ADHD and those without ADHD?")
 
-        # 检查所需列是否存在
         if 'ADHD_Status' not in data.columns or not any(col in data.columns for col in parent_vars.keys()):
             st.warning("Required 'ADHD_Status' or 'Barratt_*' columns not found in the data. Cannot perform this analysis.")
         else:
             df = data.copy()
             statuses = ['Non-ADHD', 'ADHD']
 
-            # 创建选择框
             selected_var_title = st.selectbox(
                 "Select Parental Variable to Analyze:",
                 options=list(parent_vars.values())
             )
 
-            # 获取所选变量的键和标题
             var = [k for k, v in parent_vars.items() if v == selected_var_title][0]
             title = selected_var_title
 
-            # 选择标签映射
             label_map = education_labels if 'Edu' in var else occupation_labels
             ordered_keys = list(label_map.keys())
             ordered_labels = [label_map[k] for k in ordered_keys]
 
-            # --- 开始分析逻辑 ---
             sub = df[['ADHD_Status', var]].dropna().copy()
             if sub.empty:
                 st.warning(f"No valid (non-missing) data found for {title} ({var}).")
             else:
-                # 计算计数和百分比
                 counts = {}
                 percents = {}
                 for status in statuses:
@@ -559,7 +518,7 @@ def main():
 
                 
                 fig = go.Figure()
-                for status, color in zip(statuses, ['#3498db', '#e74c3c']): # 使用之前定义的颜色
+                for status, color in zip(statuses, ['#3498db', '#e74c3c']):
                     fig.add_trace(
                         go.Bar(
                             name=status,
@@ -649,7 +608,6 @@ def main():
 
     
 
-    # 页脚
     st.markdown(
         """
         <div style='text-align: center; color: #666; font-size: 0.9rem; padding: 2rem;'>

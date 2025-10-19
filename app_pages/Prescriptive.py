@@ -15,7 +15,6 @@ import warnings
 warnings.filterwarnings("ignore")
 import threading
 
-# 特征名称映射表 - 将技术名称转换为可读名称
 FEATURE_NAME_MAPPING = {
     'APQ_P_APQ_P_CP': 'Parenting Corporal Punishment',
     'APQ_P_APQ_P_ID': 'Parenting Inconsistent Discipline', 
@@ -35,20 +34,14 @@ FEATURE_NAME_MAPPING = {
     'Sex_F': 'Gender (Female)'
 }
 
-# Create a lock for thread safety
 _lock = threading.RLock()
 
 def apply_feature_name_mapping(shap_values, feature_names=None):
-    """
-    应用特征名称映射,将技术名称转换为可读名称
-    """
     if hasattr(shap_values, 'feature_names'):
-        # 创建新的feature_names列表
         new_feature_names = []
         for name in shap_values.feature_names:
             new_feature_names.append(FEATURE_NAME_MAPPING.get(name, name))
         
-        # 创建新的SHAP Explanation对象
         return shap.Explanation(
             values=shap_values.values,
             base_values=shap_values.base_values,
@@ -59,27 +52,22 @@ def apply_feature_name_mapping(shap_values, feature_names=None):
 
 st.markdown("""
 <style>
-/* 保持默认的绿色边框 */
 .stTabs [data-baseweb="tab-border"] {
     background-color: #1D5746 !important;
 }
 
-/* 选中的tab指示条改为红色 */
 .stTabs [data-baseweb="tab-highlight"] {
     background-color: #e74c3c !important;
 }
 
-/* 选中的tab文字改为红色 */
 .stTabs [aria-selected="true"] {
     color: #e74c3c !important;
 }
 
-/* 未选中的tab文字保持绿色 */
 .stTabs [data-baseweb="tab"] {
     color: #1D5746 !important;
 }
 
-/* 悬浮时变成红色 */
 .stTabs [data-baseweb="tab"]:hover {
     color: #e74c3c !important;
 }
@@ -159,10 +147,6 @@ st.markdown("""
 
 @st.cache_resource
 def compute_shap_values():
-    """
-    Loads model and data, then computes the SHAP explainer and values.
-    """
-    # 初始化所有变量为 None,防止 UnboundLocalError
     X, y, model, df, X_test, explainer, shap_values = None, None, None, None, None, None, None
     
     try:
@@ -177,23 +161,18 @@ def compute_shap_values():
         X = df.drop(columns=[ADHD_Outcome])
         y = df[ADHD_Outcome]
 
-        # 在分割数据前,将所有特征列强制转换为 float,防止 TypeError
         try:
             X = X.astype(float)
         except ValueError as e:
             st.error(f"Error converting feature data to numeric: {e}. Please check 'df_preprocessed.csv' for non-numeric values (like text) in your feature columns.")
             return None, None, None, None
         
-        # 现在 X 保证是数字类型
         _, X_test, _, _ = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-        # 创建 SHAP 解释器
         explainer = shap.TreeExplainer(model)
-        # 计算 SHAP 值
         shap_values = explainer(X_test)
         
-        # 打印SHAP值的形状以便调试
-        st.write(f"Debug: SHAP values shape: {shap_values.values.shape}")
+        #st.write(f"Debug: SHAP values shape: {shap_values.values.shape}")
         
         return model, X_test, explainer, shap_values
 
@@ -201,7 +180,6 @@ def compute_shap_values():
         st.error(f"Error loading files: {e}. Make sure 'model/best_model_Decision_Tree_Depth=3.joblib' and 'data/processed_data/df_preprocessed.csv' exist.")
         return None, None, None, None
     except Exception as e:
-        # 捕捉其他所有意外错误
         st.error(f"An error occurred during computation: {e}")
         import traceback
         st.error(traceback.format_exc())
@@ -213,11 +191,8 @@ with st.spinner('Loading model and computing SHAP values... This may take a mome
 if model is None:
     st.stop()
 
-# 修复：正确处理SHAP值
-# 对于二分类问题，SHAP值可能是2D或3D数组
 try:
     if len(shap_values.values.shape) == 3:
-        # 如果是3D数组 (n_samples, n_features, n_classes)
         shap_values_class_1 = shap.Explanation(
             values=shap_values.values[:, :, 1],
             base_values=shap_values.base_values[:, 1] if len(shap_values.base_values.shape) > 1 else shap_values.base_values,
@@ -225,19 +200,15 @@ try:
             feature_names=shap_values.feature_names
         )
     else:
-        # 如果是2D数组 (n_samples, n_features) - 直接使用
         shap_values_class_1 = shap_values
 except Exception as e:
     st.error(f"Error processing SHAP values: {e}")
     st.stop()
 
-# 修复：正确识别性别索引
 try:
-    # 使用.values来获取numpy数组，然后转换为布尔索引
     female_mask = (X_test['Sex_F'].values == 1)
     male_mask = (X_test['Sex_F'].values == 0)
     
-    # 使用numpy的布尔索引
     explanation_female = shap.Explanation(
         values=shap_values_class_1.values[female_mask],
         base_values=shap_values_class_1.base_values[female_mask] if hasattr(shap_values_class_1.base_values, '__len__') else shap_values_class_1.base_values,
@@ -264,7 +235,6 @@ with tab1:
     st.markdown("Select a sample from the test set using the slider to see how the model made its prediction.")
 
     sample_index = st.slider(" ", 0, len(X_test) - 1, 5)
-    # 创建带有可读列名的DataFrame
     sample_data = X_test.iloc[[sample_index]].copy()
     sample_data.columns = [FEATURE_NAME_MAPPING.get(col, col) for col in sample_data.columns]
     st.dataframe(sample_data, use_container_width=True)
@@ -272,13 +242,10 @@ with tab1:
     # Force Plot 
     st.subheader("SHAP Force Plot")
     
-    # We use the raw explainer object and the specific sample's SHAP values
     with _lock:
         try:
-            # 创建更大的图形以容纳更多文本
             plt.figure(figsize=(14, 8))
             
-            # 创建单个样本的SHAP值
             sample_shap = shap.Explanation(
                 values=shap_values_class_1.values[sample_index],
                 base_values=shap_values_class_1.base_values[sample_index] if hasattr(shap_values_class_1.base_values, '__len__') else shap_values_class_1.base_values,
@@ -286,40 +253,30 @@ with tab1:
                 feature_names=shap_values_class_1.feature_names
             )
             
-            # 四舍五入数值
             sample_shap.values = np.round(sample_shap.values, 2)
             sample_shap.data = np.round(sample_shap.data, 2)
             
-            # 应用特征名称映射
             shap_values_mapped = apply_feature_name_mapping(sample_shap)
             
-            # 使用自定义参数来改善文本显示,并将蓝色改为绿色
             shap.plots.force(shap_values_mapped, matplotlib=True, 
                             text_rotation=0, 
                             show=False)
             
-            # 获取当前图形并调整布局
             fig = plt.gcf()
             
-            # 调整子图参数以提供更多空间给文本
             plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.15)
             
-            # 将蓝色改为绿色
             for ax in fig.get_axes():
-                # 修改文本颜色
                 for text in ax.texts:
                     if text.get_fontsize() > 8:  # 只调整较大的字体
                         text.set_fontsize(9.5)
-                    # 将蓝色文本改为绿色
                     if text.get_color() == '#1f77b4' or 'blue' in str(text.get_color()).lower():
                         text.set_color('#1D5746')  # 使用主题绿色
                 
-                # 修改图形元素颜色
                 for patch in ax.patches:
                     if patch.get_facecolor() == '#1f77b4' or 'blue' in str(patch.get_facecolor()).lower():
                         patch.set_facecolor('#1D5746')  # 使用主题绿色
                 
-                # 修改线条颜色
                 for line in ax.lines:
                     if line.get_color() == '#1f77b4' or 'blue' in str(line.get_color()).lower():
                         line.set_color('#1D5746')  # 使用主题绿色
@@ -333,14 +290,12 @@ with tab1:
     # Waterfall Plot
     st.subheader("SHAP Waterfall Plot")
     
-    # 使用三列布局将图片固定在中间
     col1, col2, col3 = st.columns([1, 4, 1])
     with col2:
         with _lock:
             try:
                 plt.figure(figsize=(8, 6))
                 
-                # 创建单个样本的SHAP值
                 sample_shap = shap.Explanation(
                     values=shap_values_class_1.values[sample_index],
                     base_values=shap_values_class_1.base_values[sample_index] if hasattr(shap_values_class_1.base_values, '__len__') else shap_values_class_1.base_values,
@@ -348,7 +303,6 @@ with tab1:
                     feature_names=shap_values_class_1.feature_names
                 )
                 
-                # 应用特征名称映射
                 shap_values_mapped = apply_feature_name_mapping(sample_shap)
                 shap.plots.waterfall(shap_values_mapped, max_display=16, show=False)
                 fig_waterfall = plt.gcf()
@@ -364,7 +318,6 @@ with tab2:
     col1, col2 = st.columns(2)
 
     with col1:
-        # Bar Plot
         st.subheader("Overall Feature Importance")
 
         with _lock:

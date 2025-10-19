@@ -14,27 +14,22 @@ warnings.filterwarnings("ignore")
 
 st.markdown("""
 <style>
-/* 保持默认的绿色边框 */
 .stTabs [data-baseweb="tab-border"] {
     background-color: #1D5746 !important;
 }
 
-/* 选中的tab指示条改为红色 */
 .stTabs [data-baseweb="tab-highlight"] {
     background-color: #e74c3c !important;
 }
 
-/* 选中的tab文字改为红色 */
 .stTabs [aria-selected="true"] {
     color: #e74c3c !important;
 }
 
-/* 未选中的tab文字保持绿色 */
 .stTabs [data-baseweb="tab"] {
     color: #1D5746 !important;
 }
 
-/* 悬浮时变成红色 */
 .stTabs [data-baseweb="tab"]:hover {
     color: #e74c3c !important;
 }
